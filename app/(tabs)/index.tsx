@@ -1,98 +1,218 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * Dashboard Screen - Test Portal Mobile
+ * 
+ * Main dashboard showing user stats, upcoming tests, and quick actions.
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import {
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card, CardContent, CardHeader, CardTitle } from '../../src/components/ui';
+import {
+    BorderRadius,
+    BrandColors,
+    FontSizes,
+    LightColors,
+    Spacing
+} from '../../src/constants/theme';
+import { useAuth } from '../../src/contexts/AuthContext';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const { user } = useAuth();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // TODO: Fetch latest data
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={BrandColors.primary}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>Welcome back,</Text>
+            <Text style={styles.userName}>{user?.name || 'Student'}</Text>
+          </View>
+          <View style={styles.avatarContainer}>
+            <Ionicons name="person" size={24} color={BrandColors.primary} />
+          </View>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Stats Cards */}
+        <View style={styles.statsRow}>
+          <Card style={styles.statCard} variant="elevated">
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: `${BrandColors.primary}15` }]}>
+                <Ionicons name="book" size={20} color={BrandColors.primary} />
+              </View>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Tests Taken</Text>
+            </View>
+          </Card>
+
+          <Card style={styles.statCard} variant="elevated">
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: `${LightColors.success}15` }]}>
+                <Ionicons name="trending-up" size={20} color={LightColors.success} />
+              </View>
+              <Text style={styles.statValue}>-</Text>
+              <Text style={styles.statLabel}>Avg Score</Text>
+            </View>
+          </Card>
+
+          <Card style={styles.statCard} variant="elevated">
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: `${LightColors.warning}15` }]}>
+                <Ionicons name="trophy" size={20} color={LightColors.warning} />
+              </View>
+              <Text style={styles.statValue}>-</Text>
+              <Text style={styles.statLabel}>Best Rank</Text>
+            </View>
+          </Card>
+        </View>
+
+        {/* Upcoming Tests */}
+        <Card style={styles.section}>
+          <CardHeader>
+            <CardTitle>Upcoming Tests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="calendar-outline"
+                size={48}
+                color={LightColors.textMuted}
+              />
+              <Text style={styles.emptyText}>No upcoming tests</Text>
+              <Text style={styles.emptySubtext}>
+                Your scheduled tests will appear here
+              </Text>
+            </View>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card style={styles.section}>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="time-outline"
+                size={48}
+                color={LightColors.textMuted}
+              />
+              <Text style={styles.emptyText}>No recent activity</Text>
+              <Text style={styles.emptySubtext}>
+                Take a test to see your activity here
+              </Text>
+            </View>
+          </CardContent>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: LightColors.background,
+  },
+  scrollContent: {
+    padding: Spacing.md,
+  },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: Spacing.lg,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  greeting: {
+    fontSize: FontSizes.sm,
+    color: LightColors.textMuted,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  userName: {
+    fontSize: FontSizes['2xl'],
+    fontWeight: 'bold',
+    color: LightColors.textPrimary,
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.full,
+    backgroundColor: `${BrandColors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  statCard: {
+    flex: 1,
+    padding: Spacing.sm,
+  },
+  statContent: {
+    alignItems: 'center',
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  statValue: {
+    fontSize: FontSizes.xl,
+    fontWeight: 'bold',
+    color: LightColors.textPrimary,
+  },
+  statLabel: {
+    fontSize: FontSizes.xs,
+    color: LightColors.textMuted,
+    marginTop: 2,
+  },
+  section: {
+    marginBottom: Spacing.md,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  emptyText: {
+    fontSize: FontSizes.base,
+    fontWeight: '500',
+    color: LightColors.textSecondary,
+    marginTop: Spacing.sm,
+  },
+  emptySubtext: {
+    fontSize: FontSizes.sm,
+    color: LightColors.textMuted,
+    marginTop: Spacing.xs,
+    textAlign: 'center',
   },
 });
