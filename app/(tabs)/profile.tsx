@@ -5,11 +5,12 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     Alert,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TouchableOpacity,
     View,
@@ -19,15 +20,18 @@ import { Button, Card } from '../../src/components/ui';
 import {
     BorderRadius,
     BrandColors,
+    ColorScheme,
     FontSizes,
-    LightColors,
     Spacing,
 } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useTheme } from '../../src/contexts/ThemeContext';
 import { formatExamType } from '../../src/utils/formatters';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -102,7 +106,30 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
+        {/* Appearance Settings */}
+        <Text style={styles.sectionHeader}>Appearance</Text>
+        <Card style={styles.menuCard}>
+            <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                    <Ionicons
+                        name={isDark ? "moon" : "sunny"}
+                        size={22}
+                        color={colors.textSecondary}
+                    />
+                    <Text style={styles.menuItemLabel}>Dark Mode</Text>
+                </View>
+                <Switch
+                    value={isDark}
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: '#767577', true: BrandColors.primary }}
+                    thumbColor={isDark ? '#fff' : '#f4f3f4'}
+                />
+            </View>
+        </Card>
+
+
         {/* Menu Items */}
+        <Text style={styles.sectionHeader}>Settings</Text>
         <Card style={styles.menuCard}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
@@ -117,14 +144,14 @@ export default function ProfileScreen() {
                 <Ionicons
                   name={item.icon as any}
                   size={22}
-                  color={LightColors.textSecondary}
+                  color={colors.textSecondary}
                 />
                 <Text style={styles.menuItemLabel}>{item.label}</Text>
               </View>
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={LightColors.textMuted}
+                color={colors.textMuted}
               />
             </TouchableOpacity>
           ))}
@@ -147,10 +174,10 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   header: {
     padding: Spacing.md,
@@ -159,7 +186,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSizes['2xl'],
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
   },
   scrollContent: {
     padding: Spacing.md,
@@ -167,6 +194,7 @@ const styles = StyleSheet.create({
   userCard: {
     marginBottom: Spacing.md,
     padding: Spacing.md,
+    backgroundColor: colors.card,
   },
   userInfo: {
     flexDirection: 'row',
@@ -187,11 +215,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: FontSizes.xl,
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
   },
   userEmail: {
     fontSize: FontSizes.sm,
-    color: LightColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   examBadge: {
@@ -207,9 +235,19 @@ const styles = StyleSheet.create({
     color: BrandColors.primary,
     fontWeight: '500',
   },
+  sectionHeader: {
+      fontSize: FontSizes.sm,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.sm,
+      marginLeft: Spacing.sm,
+  },
   menuCard: {
     marginBottom: Spacing.lg,
     padding: 0,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
@@ -220,7 +258,7 @@ const styles = StyleSheet.create({
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: LightColors.border,
+    borderBottomColor: colors.border,
   },
   menuItemLeft: {
     flexDirection: 'row',
@@ -228,7 +266,7 @@ const styles = StyleSheet.create({
   },
   menuItemLabel: {
     fontSize: FontSizes.base,
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
     marginLeft: Spacing.md,
   },
   logoutButton: {
@@ -237,6 +275,6 @@ const styles = StyleSheet.create({
   versionText: {
     textAlign: 'center',
     fontSize: FontSizes.xs,
-    color: LightColors.textMuted,
+    color: colors.textMuted,
   },
 });

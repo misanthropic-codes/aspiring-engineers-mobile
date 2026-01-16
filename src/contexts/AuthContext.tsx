@@ -14,10 +14,15 @@ import React, {
     useEffect,
     useState,
 } from 'react';
+import { API_CONFIG } from '../config/api.config';
+import { mockAuthService } from '../mocks';
 import authService, { RegisterResponse } from '../services/auth.service';
 import { AuthResponse, LoginCredentials, RegisterData, User } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import { tokenManager } from '../utils/tokenManager';
+
+// Get the appropriate auth service based on config
+const getAuthService = () => API_CONFIG.USE_MOCK ? mockAuthService : authService;
 
 // ============================================
 // Types
@@ -74,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login handler
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
-      const response: AuthResponse = await authService.login(credentials);
+      const service = getAuthService();
+      const response: AuthResponse = await service.login(credentials);
 
       // Store tokens securely
       await tokenManager.setAuthToken(response.token);
@@ -96,7 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (data: RegisterData): Promise<RegisterResponse> => {
     try {
       // Registration returns email/name but NO tokens (user must verify email first)
-      const response = await authService.register(data);
+      const service = getAuthService();
+      const response = await service.register(data);
 
       console.log('✅ Registration successful, OTP sent to:', response.email);
 
@@ -116,7 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('🔄 Refreshing session...');
-      const response = await authService.refreshToken(refreshToken);
+      const service = getAuthService();
+      const response = await service.refreshToken(refreshToken);
 
       if (response.refreshToken) {
         console.log('✅ Session refreshed with new refresh token');
@@ -134,7 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Refresh profile handler
   const refreshProfile = useCallback(async () => {
     try {
-      const updatedUser = await authService.getCurrentUser();
+      const service = getAuthService();
+      const updatedUser = await service.getCurrentUser();
 
       // Update state and storage
       await storage.set(STORAGE_KEYS.USER, updatedUser);
@@ -150,7 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       // Call logout API to invalidate token on server
-      await authService.logout();
+      const service = getAuthService();
+      await service.logout();
     } catch (error) {
       // Continue with logout even if API fails
       console.error('Logout error:', error);

@@ -1,11 +1,11 @@
 /**
- * Login Screen - Test Portal Mobile
+ * Forgot Password Screen - Test Portal Mobile
  * 
- * User login screen with email/password authentication.
+ * Allows users to request a password reset link.
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
     KeyboardAvoidingView,
@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input } from '../../src/components/ui';
+import { API_CONFIG } from '../../src/config/api.config';
 import {
     BorderRadius,
     BrandColors,
@@ -25,39 +26,37 @@ import {
     LightColors,
     Spacing,
 } from '../../src/constants/theme';
-import { useAuth } from '../../src/contexts/AuthContext';
+import { mockAuthService } from '../../src/mocks';
 import { isValidEmail } from '../../src/utils/validators';
 
-export default function LoginScreen() {
-  const { login } = useAuth();
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleResetRequest = async () => {
     setError('');
+    setSuccess('');
 
-    // Validation
     if (!isValidEmail(email)) {
       setError('Please enter a valid email address');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
     try {
       setLoading(true);
-      await login({ email, password });
-      // Navigation is handled by AuthContext
+
+      if (API_CONFIG.USE_MOCK) {
+        const response = await mockAuthService.forgotPassword(email);
+        setSuccess(response.message);
+      } else {
+        // TODO: Implement real API call
+        setSuccess('Password reset link sent to ' + email);
+      }
     } catch (err: any) {
-      const errorMessage =
-        err?.message || 'Login failed. Please check your credentials.';
+      const errorMessage = err?.message || 'Failed to send reset link. Please try again.';
       setError(errorMessage);
-      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
@@ -76,28 +75,44 @@ export default function LoginScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
               <Ionicons
-                name="school"
+                name="arrow-back"
+                size={24}
+                color={LightColors.textPrimary}
+              />
+            </TouchableOpacity>
+
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="lock-open-outline"
                 size={48}
                 color={BrandColors.primary}
               />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
+
+            <Text style={styles.title}>Forgot Password?</Text>
             <Text style={styles.subtitle}>
-              Sign in to continue your preparation
+              Enter your email address and we'll send you a link to reset your password.
             </Text>
           </View>
 
           {/* Error Message */}
           {error ? (
             <View style={styles.errorContainer}>
-              <Ionicons
-                name="alert-circle"
-                size={20}
-                color={LightColors.error}
-              />
+              <Ionicons name="alert-circle" size={20} color={LightColors.error} />
               <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Success Message */}
+          {success ? (
+            <View style={styles.successContainer}>
+              <Ionicons name="checkmark-circle" size={20} color={LightColors.success} />
+              <Text style={styles.successText}>{success}</Text>
             </View>
           ) : null}
 
@@ -120,48 +135,25 @@ export default function LoginScreen() {
               }
             />
 
-            <Input
-              label="Password"
-              placeholder="••••••••"
-              value={password}
-              onChangeText={setPassword}
-              isPassword
-              autoCapitalize="none"
-              autoComplete="password"
-              leftIcon={
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={LightColors.textMuted}
-                />
-              }
-            />
-
-            <Link href={'/(auth)/forgot-password' as any} asChild>
-              <TouchableOpacity style={styles.forgotPassword}>
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-              </TouchableOpacity>
-            </Link>
-
             <Button
-              onPress={handleLogin}
+              onPress={handleResetRequest}
               loading={loading}
               fullWidth
               size="lg"
+              disabled={!!success}
             >
-              Sign In
+              {success ? 'Email Sent!' : 'Send Reset Link'}
             </Button>
           </View>
 
-          {/* Register Link */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <Link href={'/(auth)/register' as any} asChild>
-              <TouchableOpacity>
-                <Text style={styles.linkText}>Sign up</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
+          {/* Back to Login */}
+          <TouchableOpacity
+            style={styles.backToLogin}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={16} color={BrandColors.primary} />
+            <Text style={styles.backToLoginText}>Back to Login</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -179,13 +171,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: Spacing.lg,
-    justifyContent: 'center',
   },
   header: {
-    alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  logoContainer: {
+  backButton: {
+    marginBottom: Spacing.lg,
+  },
+  iconContainer: {
     width: 80,
     height: 80,
     borderRadius: BorderRadius.xl,
@@ -193,16 +186,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
+    alignSelf: 'center',
   },
   title: {
-    fontSize: FontSizes['3xl'],
+    fontSize: FontSizes['2xl'],
     fontWeight: 'bold',
     color: LightColors.textPrimary,
     marginBottom: Spacing.xs,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: FontSizes.base,
+    fontSize: FontSizes.sm,
     color: LightColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -218,31 +215,32 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.xs,
     flex: 1,
   },
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${LightColors.success}15`,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  successText: {
+    color: LightColors.success,
+    fontSize: FontSizes.sm,
+    marginLeft: Spacing.xs,
+    flex: 1,
+  },
   form: {
     marginBottom: Spacing.lg,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: Spacing.lg,
-    marginTop: -Spacing.sm,
+  backToLogin: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
   },
-  forgotPasswordText: {
+  backToLoginText: {
     fontSize: FontSizes.sm,
     color: BrandColors.primary,
     fontWeight: '500',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: FontSizes.sm,
-    color: LightColors.textMuted,
-  },
-  linkText: {
-    fontSize: FontSizes.sm,
-    color: BrandColors.primary,
-    fontWeight: '600',
   },
 });

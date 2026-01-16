@@ -19,9 +19,9 @@ import {
     BorderRadius,
     BrandColors,
     FontSizes,
-    LightColors,
     Spacing,
 } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ============================================
 // Types
@@ -53,6 +53,7 @@ export function Input({
   style,
   ...props
 }: InputProps) {
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
@@ -61,13 +62,17 @@ export function Input({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>}
 
       <View
         style={[
           styles.inputContainer,
-          isFocused && styles.inputFocused,
-          hasError && styles.inputError,
+          { 
+              backgroundColor: colors.input, // Use theme input bg
+              borderColor: colors.border,
+          },
+          isFocused && { borderColor: BrandColors.primary, borderWidth: 1.5 },
+          hasError && { borderColor: colors.error },
         ]}
       >
         {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
@@ -75,11 +80,12 @@ export function Input({
         <TextInput
           style={[
             styles.input,
+            { color: colors.textPrimary }, // Dynamic text color
             leftIcon ? styles.inputWithLeftIcon : undefined,
             (rightIcon || isPassword) ? styles.inputWithRightIcon : undefined,
             style,
           ].filter(Boolean)}
-          placeholderTextColor={LightColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           onFocus={(e) => {
             setIsFocused(true);
             props.onFocus?.(e);
@@ -100,7 +106,7 @@ export function Input({
             <Ionicons
               name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color={LightColors.textMuted}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         )}
@@ -110,8 +116,8 @@ export function Input({
         )}
       </View>
 
-      {error && <Text style={styles.error}>{error}</Text>}
-      {!error && hint && <Text style={styles.hint}>{hint}</Text>}
+      {error && <Text style={[styles.error, { color: colors.error }]}>{error}</Text>}
+      {!error && hint && <Text style={[styles.hint, { color: colors.textMuted }]}>{hint}</Text>}
     </View>
   );
 }
@@ -127,30 +133,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSizes.sm,
     fontWeight: '500',
-    color: LightColors.textPrimary,
     marginBottom: Spacing.xs,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LightColors.card,
     borderWidth: 1,
-    borderColor: LightColors.border,
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
-  },
-  inputFocused: {
-    borderColor: BrandColors.primary,
-    borderWidth: 1.5,
-  },
-  inputError: {
-    borderColor: LightColors.error,
   },
   input: {
     flex: 1,
     paddingVertical: Spacing.sm + 4,
     fontSize: FontSizes.base,
-    color: LightColors.textPrimary,
   },
   inputWithLeftIcon: {
     paddingLeft: Spacing.sm,
@@ -167,12 +162,10 @@ const styles = StyleSheet.create({
   },
   error: {
     fontSize: FontSizes.xs,
-    color: LightColors.error,
     marginTop: Spacing.xs,
   },
   hint: {
     fontSize: FontSizes.xs,
-    color: LightColors.textMuted,
     marginTop: Spacing.xs,
   },
 });

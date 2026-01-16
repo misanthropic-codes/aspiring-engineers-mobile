@@ -5,8 +5,9 @@
  */
 
 import React from 'react';
-import { StyleSheet, View, ViewProps } from 'react-native';
-import { BorderRadius, LightColors, Shadows, Spacing } from '../../constants/theme';
+import { StyleSheet, Text, TextProps, View, ViewProps } from 'react-native';
+import { BorderRadius, Shadows, Spacing } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ============================================
 // Card Container
@@ -25,12 +26,36 @@ export function Card({
   style,
   ...props
 }: CardProps) {
+  const { colors, isDark } = useTheme();
+  
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    card: {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+      // For elevated cards in dark mode, we might want a lighter border or just rely on the background difference
+      borderWidth: 1, 
+    },
+    elevated: {
+      borderWidth: isDark ? 1 : 0, // Keep border in dark mode for definition, remove in light mode for shadow
+      borderColor: colors.border,
+      ...Shadows.md,
+      shadowColor: isDark ? '#000' : '#000', // Shadows are less visible in dark mode
+    },
+    outlined: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colors.border,
+    }
+  };
+
   return (
     <View
       style={[
         styles.card,
-        variant === 'elevated' && styles.elevated,
-        variant === 'outlined' && styles.outlined,
+        dynamicStyles.card,
+        variant === 'elevated' && dynamicStyles.elevated,
+        variant === 'outlined' && dynamicStyles.outlined,
         padding === 'none' && styles.paddingNone,
         padding === 'sm' && styles.paddingSm,
         padding === 'md' && styles.paddingMd,
@@ -64,15 +89,14 @@ export function CardHeader({ children, style, ...props }: CardHeaderProps) {
 // Card Title
 // ============================================
 
-import { Text, TextProps } from 'react-native';
-
 interface CardTitleProps extends TextProps {
   children: React.ReactNode;
 }
 
 export function CardTitle({ children, style, ...props }: CardTitleProps) {
+  const { colors } = useTheme();
   return (
-    <Text style={[styles.title, style]} {...props}>
+    <Text style={[styles.title, { color: colors.textPrimary }, style]} {...props}>
       {children}
     </Text>
   );
@@ -91,8 +115,9 @@ export function CardDescription({
   style,
   ...props
 }: CardDescriptionProps) {
+  const { colors } = useTheme();
   return (
-    <Text style={[styles.description, style]} {...props}>
+    <Text style={[styles.description, { color: colors.textMuted }, style]} {...props}>
       {children}
     </Text>
   );
@@ -136,20 +161,8 @@ export function CardFooter({ children, style, ...props }: CardFooterProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: LightColors.card,
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: LightColors.border,
     overflow: 'hidden',
-  },
-  elevated: {
-    borderWidth: 0,
-    ...Shadows.md,
-  },
-  outlined: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: LightColors.border,
   },
   paddingNone: {
     padding: 0,
@@ -169,12 +182,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: LightColors.textPrimary,
     marginBottom: 4,
   },
   description: {
     fontSize: 14,
-    color: LightColors.textMuted,
   },
   content: {
     // Content has no default padding, inherits from Card

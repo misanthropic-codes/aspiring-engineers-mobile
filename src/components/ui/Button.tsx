@@ -14,7 +14,8 @@ import {
     TouchableOpacityProps,
     ViewStyle,
 } from 'react-native';
-import { BorderRadius, BrandColors, FontSizes, LightColors, Spacing } from '../../constants/theme';
+import { BorderRadius, BrandColors, FontSizes, Spacing } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ============================================
 // Types
@@ -35,118 +36,6 @@ interface ButtonProps extends TouchableOpacityProps {
 }
 
 // ============================================
-// Styles by Variant
-// ============================================
-
-const getVariantStyles = (
-  variant: ButtonVariant,
-  disabled: boolean
-): { container: ViewStyle; text: TextStyle } => {
-  const opacity = disabled ? 0.5 : 1;
-
-  switch (variant) {
-    case 'secondary':
-      return {
-        container: {
-          backgroundColor: LightColors.textMuted,
-          opacity,
-        },
-        text: {
-          color: '#FFFFFF',
-        },
-      };
-    case 'outline':
-      return {
-        container: {
-          backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderColor: BrandColors.primary,
-          opacity,
-        },
-        text: {
-          color: BrandColors.primary,
-        },
-      };
-    case 'ghost':
-      return {
-        container: {
-          backgroundColor: 'transparent',
-          opacity,
-        },
-        text: {
-          color: BrandColors.primary,
-        },
-      };
-    case 'destructive':
-      return {
-        container: {
-          backgroundColor: LightColors.error,
-          opacity,
-        },
-        text: {
-          color: '#FFFFFF',
-        },
-      };
-    case 'default':
-    default:
-      return {
-        container: {
-          backgroundColor: BrandColors.primary,
-          opacity,
-        },
-        text: {
-          color: '#FFFFFF',
-        },
-      };
-  }
-};
-
-// ============================================
-// Styles by Size
-// ============================================
-
-const getSizeStyles = (
-  size: ButtonSize
-): { container: ViewStyle; text: TextStyle } => {
-  switch (size) {
-    case 'sm':
-      return {
-        container: {
-          paddingVertical: Spacing.xs,
-          paddingHorizontal: Spacing.md,
-          borderRadius: BorderRadius.md,
-        },
-        text: {
-          fontSize: FontSizes.sm,
-        },
-      };
-    case 'lg':
-      return {
-        container: {
-          paddingVertical: Spacing.md,
-          paddingHorizontal: Spacing.xl,
-          borderRadius: BorderRadius.lg,
-        },
-        text: {
-          fontSize: FontSizes.lg,
-        },
-      };
-    case 'md':
-    default:
-      return {
-        container: {
-          paddingVertical: Spacing.sm + 4,
-          paddingHorizontal: Spacing.lg,
-          borderRadius: BorderRadius.lg,
-        },
-        text: {
-          fontSize: FontSizes.base,
-        },
-      };
-  }
-};
-
-// ============================================
 // Component
 // ============================================
 
@@ -162,6 +51,112 @@ export function Button({
   style,
   ...props
 }: ButtonProps) {
+  const { colors } = useTheme();
+
+  const getVariantStyles = (
+    variant: ButtonVariant,
+    disabled: boolean
+  ): { container: ViewStyle; text: TextStyle } => {
+    const opacity = disabled ? 0.5 : 1;
+
+    switch (variant) {
+      case 'secondary':
+        return {
+          container: {
+            backgroundColor: colors.input, // Using input background for secondary
+            opacity,
+          },
+          text: {
+            color: colors.textPrimary,
+          },
+        };
+      case 'outline':
+        return {
+          container: {
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderColor: BrandColors.primary,
+            opacity,
+          },
+          text: {
+            color: BrandColors.primary,
+          },
+        };
+      case 'ghost':
+        return {
+          container: {
+            backgroundColor: 'transparent',
+            opacity,
+          },
+          text: {
+            color: BrandColors.primary,
+          },
+        };
+      case 'destructive':
+        return {
+          container: {
+            backgroundColor: colors.error,
+            opacity,
+          },
+          text: {
+            color: '#FFFFFF',
+          },
+        };
+      case 'default':
+      default:
+        return {
+          container: {
+            backgroundColor: BrandColors.primary,
+            opacity,
+          },
+          text: {
+            color: '#FFFFFF',
+          },
+        };
+    }
+  };
+
+  const getSizeStyles = (
+    size: ButtonSize
+  ): { container: ViewStyle; text: TextStyle } => {
+    switch (size) {
+      case 'sm':
+        return {
+          container: {
+            paddingVertical: Spacing.xs,
+            paddingHorizontal: Spacing.md,
+            borderRadius: BorderRadius.md,
+          },
+          text: {
+            fontSize: FontSizes.sm,
+          },
+        };
+      case 'lg':
+        return {
+          container: {
+            paddingVertical: Spacing.md,
+            paddingHorizontal: Spacing.xl,
+            borderRadius: BorderRadius.lg,
+          },
+          text: {
+            fontSize: FontSizes.lg,
+          },
+        };
+      case 'md':
+      default:
+        return {
+          container: {
+            paddingVertical: Spacing.sm + 4,
+            paddingHorizontal: Spacing.lg,
+            borderRadius: BorderRadius.lg,
+          },
+          text: {
+            fontSize: FontSizes.base,
+          },
+        };
+    }
+  };
+
   const variantStyles = getVariantStyles(variant, disabled || loading);
   const sizeStyles = getSizeStyles(size);
 

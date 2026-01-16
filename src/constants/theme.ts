@@ -15,6 +15,7 @@ export const BrandColors = {
 // Light Theme Colors
 export const LightColors = {
   background: '#FAFAFA',       // rgb(250, 250, 250)
+  backgroundAlt: '#F4F4F5',    // slightly darker background
   foreground: '#0F172A',       // rgb(15, 23, 42)
   card: '#FFFFFF',             // rgb(255, 255, 255)
   cardForeground: '#0F172A',   // rgb(15, 23, 42)
@@ -37,25 +38,26 @@ export const LightColors = {
 
 // Dark Theme Colors
 export const DarkColors = {
-  background: '#071219',       // rgb(7, 18, 25)
-  foreground: '#F8FAFC',       // rgb(248, 250, 252)
-  card: '#0F172A',             // rgb(15, 23, 42)
-  cardForeground: '#F8FAFC',   // rgb(248, 250, 252)
-  border: 'rgba(255, 255, 255, 0.1)',
-  input: 'rgba(255, 255, 255, 0.15)',
+  background: '#000000',       // Pure Black
+  backgroundAlt: '#050505',    // Almost Black
+  foreground: '#FFFFFF',       // Pure White
+  card: '#121212',             // Material Dark Surface
+  cardForeground: '#FFFFFF',   
+  border: '#27272A',           // Zinc-800
+  input: '#27272A',
   ring: '#60DFFF',             // Brand light
-  textPrimary: '#F8FAFC',      // rgb(248, 250, 252)
-  textSecondary: '#CBD5E1',    // rgb(203, 213, 225)
-  textMuted: '#94A3B8',        // rgb(148, 163, 184)
+  textPrimary: '#FFFFFF',      // Pure White
+  textSecondary: '#E4E4E7',    // Zinc-200 (Brightened from Zinc-400)
+  textMuted: '#A1A1AA',        // Zinc-400 (Brightened from Zinc-500)
   // Status colors
-  success: '#22C55E',
-  successLight: 'rgba(34, 197, 94, 0.1)',
-  error: '#EF4444',
-  errorLight: 'rgba(239, 68, 68, 0.1)',
-  warning: '#F59E0B',
-  warningLight: 'rgba(245, 158, 11, 0.1)',
-  info: '#3B82F6',
-  infoLight: 'rgba(59, 130, 246, 0.1)',
+  success: '#4ADE80',
+  successLight: 'rgba(74, 222, 128, 0.1)',
+  error: '#F87171',
+  errorLight: 'rgba(248, 113, 113, 0.1)',
+  warning: '#FBBF24',
+  warningLight: 'rgba(251, 191, 36, 0.1)',
+  info: '#60A5FA',
+  infoLight: 'rgba(96, 165, 250, 0.1)',
 } as const;
 
 // Combined Colors object for easy theme switching
@@ -90,6 +92,7 @@ export const BorderRadius = {
 export const FontSizes = {
   xs: 12,
   sm: 14,
+  md: 16, // Alias for base
   base: 16,
   lg: 18,
   xl: 20,

@@ -5,31 +5,62 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useMemo } from 'react';
 import {
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, CardContent } from '../../src/components/ui';
+import { Button, Card, CardContent } from '../../src/components/ui';
+import { API_CONFIG } from '../../src/config/api.config';
 import {
-    BrandColors,
-    FontSizes,
-    LightColors,
-    Spacing,
+  BorderRadius,
+  BrandColors,
+  ColorScheme,
+  FontSizes,
+  Spacing,
 } from '../../src/constants/theme';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { mockTestService } from '../../src/mocks';
+import { testService } from '../../src/services/test.service';
+import { Test } from '../../src/types';
+
+const getTestService = () => API_CONFIG.USE_MOCK ? mockTestService : testService;
 
 export default function TestsScreen() {
+  const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+
   const [refreshing, setRefreshing] = React.useState(false);
+  const [tests, setTests] = React.useState<Test[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchTests = React.useCallback(async () => {
+    try {
+      const service = getTestService();
+      const data = await service.getAllTests();
+      setTests(data.tests);
+    } catch (error) {
+      console.error('Failed to fetch tests:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchTests();
+  }, [fetchTests]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    // TODO: Fetch tests
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    fetchTests();
+  }, [fetchTests]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -48,30 +79,77 @@ export default function TestsScreen() {
           />
         }
       >
-        <Card>
-          <CardContent>
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="document-text-outline"
-                size={64}
-                color={LightColors.textMuted}
-              />
-              <Text style={styles.emptyTitle}>No Tests Available</Text>
-              <Text style={styles.emptySubtext}>
-                Your purchased and assigned tests will appear here
-              </Text>
-            </View>
-          </CardContent>
-        </Card>
+        {loading && tests.length === 0 ? (
+          <Text style={styles.loadingText}>Loading tests...</Text>
+        ) : tests.length > 0 ? (
+          tests.map((test) => (
+            <Card key={test.id} style={styles.testCard}>
+              <CardContent>
+                <View style={styles.testHeader}>
+                  <View style={styles.testIcon}>
+                    <Ionicons name="school-outline" size={24} color={BrandColors.primary} />
+                  </View>
+                  <View style={styles.testInfo}>
+                    <Text style={styles.testTitle}>{test.title}</Text>
+                    <Text style={styles.testExamType}>{test.examType} • {test.difficulty}</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.testDescription} numberOfLines={2}>
+                  {test.description}
+                </Text>
+
+                <View style={styles.testMeta}>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.metaText}>{test.duration} mins</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="help-circle-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.metaText}>{test.totalQuestions} Questions</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="ribbon-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.metaText}>{test.totalMarks} Marks</Text>
+                  </View>
+                </View>
+
+                <Button
+                  onPress={() => router.push(`/test/attempt/${test.id}`)}
+                  style={styles.startButton}
+                  size="sm"
+                >
+                  Start Test
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <Card>
+            <CardContent>
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={64}
+                  color={colors.textMuted}
+                />
+                <Text style={styles.emptyTitle}>No Tests Available</Text>
+                <Text style={styles.emptySubtext}>
+                  Your purchased and assigned tests will appear here
+                </Text>
+              </View>
+            </CardContent>
+          </Card>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   header: {
     padding: Spacing.md,
@@ -80,11 +158,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSizes['2xl'],
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
   },
   scrollContent: {
     padding: Spacing.md,
     flexGrow: 1,
+    paddingBottom: 100,
   },
   emptyState: {
     alignItems: 'center',
@@ -93,13 +172,76 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: FontSizes.lg,
     fontWeight: '600',
-    color: LightColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: Spacing.md,
   },
   emptySubtext: {
     fontSize: FontSizes.sm,
-    color: LightColors.textMuted,
+    color: colors.textMuted,
     marginTop: Spacing.xs,
     textAlign: 'center',
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: Spacing.xl,
+    color: colors.textMuted,
+  },
+  testCard: {
+    marginBottom: Spacing.md,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+  },
+  testHeader: {
+    flexDirection: 'row',
+    marginBottom: Spacing.sm,
+  },
+  testIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    backgroundColor: `${BrandColors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  testInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  testTitle: {
+    fontSize: FontSizes.base,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  testExamType: {
+    fontSize: FontSizes.xs,
+    color: BrandColors.primary,
+    fontWeight: '500',
+  },
+  testDescription: {
+    fontSize: FontSizes.sm,
+    color: colors.textSecondary,
+    marginBottom: Spacing.md,
+    lineHeight: 20,
+  },
+  testMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: Spacing.sm,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    color: colors.textMuted,
+    fontSize: FontSizes.xs,
+  },
+  startButton: {
+    marginTop: Spacing.md,
   },
 });

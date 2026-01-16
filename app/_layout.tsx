@@ -1,23 +1,28 @@
 /**
  * Root Layout - Test Portal Mobile
- * 
+ *
  * Sets up the root navigation and providers.
  */
 
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { LightColors } from '../src/constants/theme';
-import { AuthProvider } from '../src/contexts/AuthContext';
+import { BrandColors } from '../src/constants/theme';
+import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { ThemeProvider } from '../src/contexts/ThemeContext';
 
-export default function RootLayout() {
+// Inner component that can safely use hooks
+function RootLayoutNav() {
+  const { authState } = useAuth();
+  // potentially use theme hook here too for background color
+
   return (
-    <AuthProvider>
+    <>
       <StatusBar style="auto" />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: {
-            backgroundColor: LightColors.background,
+            backgroundColor: BrandColors.primary, 
           },
         }}
       >
@@ -25,6 +30,16 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
       </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
     </AuthProvider>
   );
 }
