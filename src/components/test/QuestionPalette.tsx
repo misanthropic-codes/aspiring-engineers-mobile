@@ -1,6 +1,7 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BorderRadius, BrandColors, FontSizes, LightColors, Spacing } from '../../constants/theme';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { QuestionStatus } from '../../types';
 
 interface QuestionPaletteProps {
@@ -20,28 +21,34 @@ export const QuestionPalette = ({
   onQuestionSelect,
   isVisible,
 }: QuestionPaletteProps) => {
+  const { colors } = useTheme();
+
   if (!isVisible) return null;
 
   const getStatusColor = (status: QuestionStatus, isCurrent: boolean) => {
     if (isCurrent) return BrandColors.secondary; // Highlight current
     switch (status) {
       case QuestionStatus.ANSWERED:
-        return LightColors.success;
+        return colors.success;
       case QuestionStatus.MARKED_FOR_REVIEW:
-        return LightColors.warning;
+        return colors.warning;
       case QuestionStatus.ANSWERED_AND_MARKED:
         return '#7C4DFF'; // Purple for answered & marked
       case QuestionStatus.NOT_ANSWERED:
-        return LightColors.error;
+        return colors.error;
       default:
-        return LightColors.border; // Not visited
+        return colors.border; // Not visited
     }
   };
 
   const getStatusTextColor = (status: QuestionStatus, isCurrent: boolean) => {
+      // If current or visited (non-border color), use white text
+      // Otherwise use primary text
       if (isCurrent || status !== QuestionStatus.NOT_VISITED) return '#fff';
-      return LightColors.textPrimary;
+      return colors.textPrimary;
   };
+
+  const styles = getStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -49,19 +56,19 @@ export const QuestionPalette = ({
       
       <View style={styles.legendContainer}>
          <View style={styles.legendItem}>
-             <View style={[styles.legendDot, { backgroundColor: LightColors.success }]} />
+             <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
              <Text style={styles.legendText}>Answered</Text>
          </View>
          <View style={styles.legendItem}>
-             <View style={[styles.legendDot, { backgroundColor: LightColors.error }]} />
+             <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
              <Text style={styles.legendText}>Not Answered</Text>
          </View>
          <View style={styles.legendItem}>
-             <View style={[styles.legendDot, { backgroundColor: LightColors.warning }]} />
+             <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
              <Text style={styles.legendText}>Marked</Text>
          </View>
          <View style={styles.legendItem}>
-             <View style={[styles.legendDot, { backgroundColor: LightColors.border }]} />
+             <View style={[styles.legendDot, { backgroundColor: colors.border }]} />
              <Text style={styles.legendText}>Not Visited</Text>
          </View>
       </View>
@@ -73,6 +80,8 @@ export const QuestionPalette = ({
           const bgColor = getStatusColor(status, isCurrent);
           const textColor = getStatusTextColor(status, isCurrent);
 
+          // For not visited, we need to ensure contrast if background is border color
+          // If status is NOT_VISITED (border color), color depends on theme
           return (
             <TouchableOpacity
               key={q.id}
@@ -90,18 +99,19 @@ export const QuestionPalette = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
-    backgroundColor: LightColors.background,
+    // Transparent on iOS to let GlassView show. Card color on Android.
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.card,
     borderTopWidth: 1,
-    borderTopColor: LightColors.border,
+    borderTopColor: colors.border,
     padding: Spacing.md,
     maxHeight: 300,
   },
   title: {
     fontSize: FontSizes.md,
     fontWeight: '600',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: Spacing.sm,
   },
   legendContainer: {
@@ -122,7 +132,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: FontSizes.xs,
-    color: LightColors.textSecondary,
+    color: colors.textSecondary,
   },
   grid: {
     flexDirection: 'row',

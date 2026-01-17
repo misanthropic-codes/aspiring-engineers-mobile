@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BorderRadius, BrandColors, FontSizes, LightColors, Spacing } from '../../constants/theme';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { formatTimerDisplay } from '../../utils/formatters';
+import { GlassView } from '../ui/GlassView';
 
 interface TestHeaderProps {
   testTitle: string;
@@ -19,6 +21,8 @@ export const TestHeader = ({
   onTogglePalette,
   showPalette,
 }: TestHeaderProps) => {
+  const { colors, isDark } = useTheme();
+  
   const handleSubmitPress = () => {
     Alert.alert(
       'Submit Test',
@@ -31,10 +35,12 @@ export const TestHeader = ({
   };
 
   // Warning color when time is low (< 5 mins)
-  const timerColor = timeRemaining < 300 ? LightColors.error : LightColors.textPrimary;
+  const timerColor = timeRemaining < 300 ? colors.error : colors.textPrimary;
+
+  const styles = getStyles(colors, isDark);
 
   return (
-    <View style={styles.container}>
+    <GlassView style={styles.container} intensity={90}>
       <View style={styles.topRow}>
         <Text style={styles.title} numberOfLines={1}>{testTitle}</Text>
         <TouchableOpacity onPress={handleSubmitPress} style={styles.submitButton}>
@@ -61,22 +67,21 @@ export const TestHeader = ({
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </GlassView>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   container: {
-    backgroundColor: LightColors.background,
+    // On iOS, GlassView handles background. On Android, GlassView falls back to this or we set it explicitly there.
+    // However, GlassView logic sets bg for non-iOS. 
+    // For iOS, we want transparent here so blur shows through.
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.background,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: LightColors.border,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderBottomColor: colors.border,
+    zIndex: 10, // Ensure header is above content
   },
   topRow: {
     flexDirection: 'row',
@@ -87,12 +92,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSizes.md,
     fontWeight: '600',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary, // Dynamic text
     flex: 1,
     marginRight: Spacing.md,
   },
   submitButton: {
-    backgroundColor: LightColors.error,
+    backgroundColor: colors.error, // Dynamic error color
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
@@ -111,7 +116,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: LightColors.backgroundAlt,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', // Semi-transparent for glass
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: BorderRadius.full,

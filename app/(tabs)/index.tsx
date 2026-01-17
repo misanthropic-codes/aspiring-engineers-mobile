@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
+    Image,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -28,6 +29,7 @@ import {
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useTheme } from '../../src/contexts/ThemeContext'; // Import theme hook
 import { mockDashboardService } from '../../src/mocks';
+import { mockStoreItems } from '../../src/mocks/mockData';
 import { dashboardService } from '../../src/services/dashboard.service';
 import { DashboardStats } from '../../src/types';
 
@@ -162,6 +164,36 @@ export default function DashboardScreen() {
               </View>
             )}
           </CardContent>
+        </Card>
+
+        {/* Suggested For You */}
+        <Card style={styles.section}>
+          <CardHeader>
+            <CardTitle>Suggested for You</CardTitle>
+          </CardHeader>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.suggestedScroll}
+          >
+             {mockStoreItems.filter(i => i.isRecommended).map((item) => (
+                <TouchableOpacity 
+                   key={item.id}
+                   style={[styles.suggestedCard, { backgroundColor: isDark ? '#1a2b3c' : '#f0f9ff', borderColor: colors.border }]}
+                   onPress={() => router.push('/(tabs)/store')}
+                   activeOpacity={0.8}
+                >
+                    <Image source={{ uri: item.image }} style={styles.suggestedImage} />
+                    <View style={styles.suggestedContent}>
+                        <View style={styles.suggestedBadge}>
+                            <Text style={styles.suggestedBadgeText}>{item.category}</Text>
+                        </View>
+                        <Text style={styles.suggestedTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={styles.suggestedPrice}>₹{item.price}</Text>
+                    </View>
+                </TouchableOpacity>
+             ))}
+          </ScrollView>
         </Card>
 
         {/* Recent Activity */}
@@ -339,5 +371,51 @@ const getStyles = (colors: ColorScheme) => StyleSheet.create({
     fontSize: FontSizes.xs,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  suggestedScroll: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  suggestedCard: {
+    width: 200,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    marginRight: Spacing.sm,
+    overflow: 'hidden',
+    padding: 0, 
+  },
+  suggestedImage: {
+    width: '100%',
+    height: 100,
+    resizeMode: 'cover',
+  },
+  suggestedContent: {
+    padding: Spacing.md,
+  },
+  suggestedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: BrandColors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: Spacing.sm,
+  },
+  suggestedBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  suggestedTitle: {
+    fontSize: FontSizes.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: Spacing.xs,
+    height: 40,
+  },
+  suggestedPrice: {
+    fontSize: FontSizes.md,
+    fontWeight: 'bold',
+    color: BrandColors.secondary,
   },
 });

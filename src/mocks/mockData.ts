@@ -590,6 +590,125 @@ export const mockTestResult: TestResult = {
   },
 };
 
+// ============================================
+// Mock PYQ Data
+// ============================================
+
+export const mockPyqPapers = [
+  {
+    title: "JEE Mains 2024 - January Session 1",
+    description: "Complete paper with detailed solutions for all 90 questions",
+    badge: "New",
+    metadata: [
+      { label: "Date", value: "24-01-2024" },
+      { label: "Questions", value: "90" },
+      { label: "Marks", value: "300" },
+    ],
+    // Sample public PDF for testing
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+  {
+    title: "JEE Mains 2024 - January Session 2",
+    description: "All sessions with comprehensive step-by-step explanations",
+    metadata: [
+      { label: "Date", value: "27-01-2024" },
+      { label: "Questions", value: "90" },
+      { label: "Duration", value: "3 Hours" },
+    ],
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+  {
+    title: "JEE Mains 2023 - April Session",
+    description: "Physics, Chemistry, and Mathematics with detailed answers",
+    metadata: [
+      { label: "Sessions", value: "4" },
+      { label: "Total Qs", value: "360" },
+    ],
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+  {
+    title: "JEE Mains 2023 - January Session",
+    description: "Complete set with topic-wise solution breakdown",
+    metadata: [
+      { label: "Sessions", value: "6" },
+      { label: "Total Qs", value: "540" },
+    ],
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+];
+
+export const mockSubjectWisePapers = [
+  {
+    title: "Physics PYQ Collection",
+    description: "2015-2024 physics questions with solutions",
+    badge: "1000+ Qs",
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+  {
+    title: "Chemistry PYQ Collection",
+    description: "2015-2024 chemistry questions with solutions",
+    badge: "1000+ Qs",
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+  {
+    title: "Mathematics PYQ Collection",
+    description: "2015-2024 mathematics questions with solutions",
+    badge: "1000+ Qs",
+    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  },
+];
+
+// ============================================
+// Mock Store Data
+// ============================================
+
+export const mockStoreItems = [
+  {
+    id: 'store1',
+    title: 'Expert Counseling Session',
+    description: 'One-on-one session with IIT/AIIMS graduates to plan your preparation strategy.',
+    category: 'Counseling',
+    price: 499,
+    originalPrice: 999,
+    image: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400',
+    link: 'https://example.com/counseling',
+    isRecommended: true,
+  },
+  {
+    id: 'store2',
+    title: 'College Admission Support',
+    description: 'Complete guidance for JOSAA/CSAB counseling and form filling assistance.',
+    category: 'Admission',
+    price: 999,
+    originalPrice: 2499,
+    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400',
+    link: 'https://example.com/admission',
+    isRecommended: true,
+  },
+  {
+    id: 'store3',
+    title: 'JEE Advanced Test Series',
+    description: '20 Full-length mock tests with detailed video solutions and analytics.',
+    category: 'Test Series',
+    price: 1499,
+    originalPrice: 2999,
+    image: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=400',
+    link: 'https://example.com/test-series',
+    isRecommended: false,
+  },
+  {
+    id: 'store4',
+    title: 'Personal Mentorship Plan',
+    description: 'Monthly mentorship program with daily targets and performance tracking.',
+    category: 'College Support',
+    price: 1999,
+    originalPrice: 3999,
+    image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400',
+    link: 'https://example.com/mentorship',
+    isRecommended: true,
+  },
+];
+
 export default {
   mockUsers,
   mockTests,
@@ -597,4 +716,7 @@ export default {
   mockDashboardStats,
   mockAnalytics,
   mockTestResult,
+  mockPyqPapers,
+  mockSubjectWisePapers,
+  mockStoreItems,
 };

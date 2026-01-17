@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { BorderRadius, BrandColors, FontSizes, LightColors, Spacing } from '../../constants/theme';
+import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Answer, Question, QuestionType } from '../../types';
 
 interface QuestionViewerProps {
@@ -14,7 +15,39 @@ export const QuestionViewer = ({
   answer,
   onAnswerChange,
 }: QuestionViewerProps) => {
+  const { colors, isDark } = useTheme();
   
+  // Local state for numerical input to handle decimals and negative signs
+  const [numericalValue, setNumericalValue] = React.useState('');
+  const lastQuestionId = React.useRef(question.id);
+
+  // Sync local numerical value when question changes or answer updates externally
+  React.useEffect(() => {
+    // If question changed, blindly reset
+    if (lastQuestionId.current !== question.id) {
+      setNumericalValue(answer?.numericalAnswer !== undefined ? String(answer.numericalAnswer) : '');
+      lastQuestionId.current = question.id;
+      return;
+    }
+
+    // Smart sync for same question
+    const propVal = answer?.numericalAnswer;
+    
+    if (propVal === undefined) {
+      // Only clear if we are not currently typing a negative sign or empty
+      if (numericalValue !== '' && numericalValue !== '-') {
+        setNumericalValue('');
+      }
+    } else {
+      const currentParsed = parseFloat(numericalValue);
+      // If props match what we have parsed locally, don't touch local state
+      // This preserves "3." when prop is 3
+      if (currentParsed !== propVal) {
+        setNumericalValue(String(propVal));
+      }
+    }
+  }, [question.id, answer?.numericalAnswer, numericalValue]);
+
   const handleOptionSelect = (optionId: string) => {
     if (question.type === QuestionType.MCQ_SINGLE) {
       onAnswerChange({ selectedOptions: [optionId] });
@@ -28,15 +61,20 @@ export const QuestionViewer = ({
   };
 
   const handleNumericalChange = (text: string) => {
-    // allow numerical input, maybe negative and decimal
+    setNumericalValue(text);
+    
+    if (text === '' || text === '-') {
+       onAnswerChange({ numericalAnswer: undefined });
+       return;
+    }
+
     const num = parseFloat(text);
     if (!isNaN(num)) {
-      onAnswerChange({ numericalAnswer: num });
-    } else if (text === '' || text === '-') {
-       // Allow clearing or starting with negative
-       onAnswerChange({ numericalAnswer: undefined }); // or handle text state locally if needed for strict typing
+       onAnswerChange({ numericalAnswer: num });
     }
   };
+
+  const styles = getStyles(colors, isDark);
 
   const renderOptions = () => {
     if (!question.options) return null;
@@ -77,8 +115,6 @@ export const QuestionViewer = ({
   };
 
   const renderNumericalInput = () => {
-    const val = answer?.numericalAnswer !== undefined ? String(answer.numericalAnswer) : '';
-    
     return (
       <View style={styles.numericalContainer}>
         <Text style={styles.numericalLabel}>Enter your answer:</Text>
@@ -86,9 +122,9 @@ export const QuestionViewer = ({
           style={styles.numericalInput}
           keyboardType="numeric"
           placeholder="0.00"
-          value={val}
+          value={numericalValue}
           onChangeText={handleNumericalChange}
-          placeholderTextColor={LightColors.textMuted}
+          placeholderTextColor={colors.textMuted}
         />
       </View>
     );
@@ -99,7 +135,7 @@ export const QuestionViewer = ({
       <View style={styles.header}>
         <Text style={styles.qNum}>Question {question.questionNumber}</Text>
         <View style={styles.marksContainer}>
-          <Text style={styles.marksText}>+{question.marks}</Text>
+          <Text style={styles.marksText}>{question.marks > 0 ? '+' : ''}{question.marks}</Text>
           <Text style={styles.negativeText}>-{question.negativeMarks}</Text>
         </View>
       </View>
@@ -116,10 +152,10 @@ export const QuestionViewer = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   content: {
     padding: Spacing.md,
@@ -131,13 +167,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: LightColors.border,
+    borderBottomColor: colors.border,
     paddingBottom: Spacing.xs,
   },
   qNum: {
     fontSize: FontSizes.md,
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
   },
   marksContainer: {
     flexDirection: 'row',
@@ -145,17 +181,17 @@ const styles = StyleSheet.create({
   },
   marksText: {
     fontSize: FontSizes.xs,
-    color: LightColors.success,
+    color: colors.success,
     fontWeight: '600',
   },
   negativeText: {
     fontSize: FontSizes.xs,
-    color: LightColors.error,
+    color: colors.error,
     fontWeight: '600',
   },
   questionText: {
     fontSize: FontSizes.base,
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
     lineHeight: 24,
     marginBottom: Spacing.xl,
   },
@@ -166,25 +202,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: LightColors.border,
+    borderColor: colors.border,
     borderRadius: BorderRadius.md,
     gap: Spacing.md,
   },
   optionCardSelected: {
     borderColor: BrandColors.primary,
-    backgroundColor: `${BrandColors.primary}05`,
+    backgroundColor: isDark ? `${BrandColors.primary}15` : `${BrandColors.primary}05`, // More visible tint in dark mode
   },
   optionMarker: {
     width: 28,
     height: 28,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: LightColors.textMuted,
+    borderColor: colors.textMuted,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   optionMarkerSelected: {
     borderColor: BrandColors.primary,
@@ -199,12 +235,12 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: FontSizes.xs,
     fontWeight: '600',
-    color: LightColors.textMuted,
+    color: colors.textMuted,
   },
   optionText: {
     flex: 1,
     fontSize: FontSizes.sm,
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
     lineHeight: 20,
   },
   optionTextSelected: {
@@ -216,17 +252,17 @@ const styles = StyleSheet.create({
   },
   numericalLabel: {
     fontSize: FontSizes.sm,
-    color: LightColors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: Spacing.sm,
   },
   numericalInput: {
     borderWidth: 1,
-    borderColor: LightColors.border,
+    borderColor: colors.border,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     fontSize: FontSizes.lg,
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
-    backgroundColor: LightColors.background,
+    color: colors.textPrimary,
+    backgroundColor: colors.input,
   },
 });

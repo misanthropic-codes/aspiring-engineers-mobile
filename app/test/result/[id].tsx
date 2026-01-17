@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, CardContent } from '../../../src/components/ui';
-import { BorderRadius, BrandColors, FontSizes, LightColors, Spacing } from '../../../src/constants/theme';
+import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../../src/constants/theme';
+import { useTheme } from '../../../src/contexts/ThemeContext';
 import { mockResultsService } from '../../../src/mocks';
 import { TestResult } from '../../../src/types';
 import { formatPercentage, formatRank } from '../../../src/utils/formatters';
@@ -15,8 +16,12 @@ const getResultsService = () => mockResultsService;
 export default function ResultScreen() {
   const { id } = useLocalSearchParams(); // attemptId
   const router = useRouter();
+  const { colors, isDark } = useTheme();
+  
   const [result, setResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const styles = getStyles(colors, isDark);
 
   useEffect(() => {
     const fetchResult = async () => {
@@ -54,6 +59,12 @@ export default function ResultScreen() {
     );
   }
 
+  // Helper for badge style
+  const getBadgeStyle = (color: string) => ({
+    backgroundColor: isDark ? `${color}20` : `${color}15`, // Darker semi-transparent bg in dark mode
+    color: color
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -61,7 +72,7 @@ export default function ResultScreen() {
         <View style={styles.header}>
             <Text style={styles.headerTitle}>Test Result</Text>
             <TouchableOpacity onPress={() => router.replace('/(tabs)/')} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={LightColors.textPrimary} />
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
         </View>
 
@@ -91,14 +102,14 @@ export default function ResultScreen() {
 
             {/* Performance Overview */}
             <View style={styles.overviewContainer}>
-                <View style={[styles.overviewCard, { backgroundColor: LightColors.successLight }]}>
-                    <Text style={[styles.overviewValue, { color: LightColors.success }]}>
+                <View style={[styles.overviewCard, { backgroundColor: isDark ? `${colors.success}15` : '#DCFCE7' }]}>
+                    <Text style={[styles.overviewValue, { color: colors.success }]}>
                         {formatPercentage(result.speedAccuracy.accuracy)}
                     </Text>
                     <Text style={styles.overviewLabel}>Accuracy</Text>
                 </View>
-                 <View style={[styles.overviewCard, { backgroundColor: LightColors.infoLight }]}>
-                    <Text style={[styles.overviewValue, { color: LightColors.info }]}>
+                 <View style={[styles.overviewCard, { backgroundColor: isDark ? `${colors.info}15` : '#DBEAFE' }]}>
+                    <Text style={[styles.overviewValue, { color: colors.info }]}>
                         {result.timeTaken}m
                     </Text>
                     <Text style={styles.overviewLabel}>Time Taken</Text>
@@ -117,15 +128,15 @@ export default function ResultScreen() {
                          
                          <View style={styles.progressRow}>
                              <View style={styles.progressItem}>
-                                 <View style={[styles.dot, { backgroundColor: LightColors.success }]} />
+                                 <View style={[styles.dot, { backgroundColor: colors.success }]} />
                                  <Text style={styles.progressText}>{section.correctAnswers} Correct</Text>
                              </View>
                              <View style={styles.progressItem}>
-                                 <View style={[styles.dot, { backgroundColor: LightColors.error }]} />
+                                 <View style={[styles.dot, { backgroundColor: colors.error }]} />
                                  <Text style={styles.progressText}>{section.incorrectAnswers} Wrong</Text>
                              </View>
                              <View style={styles.progressItem}>
-                                 <View style={[styles.dot, { backgroundColor: LightColors.textMuted }]} />
+                                 <View style={[styles.dot, { backgroundColor: colors.textMuted }]} />
                                  <Text style={styles.progressText}>{section.unattempted} Skipped</Text>
                              </View>
                          </View>
@@ -145,22 +156,21 @@ export default function ResultScreen() {
   );
 }
 
-import { TouchableOpacity } from 'react-native';
-
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background, // Ensure loading background is correct
   },
   loadingText: {
     marginTop: Spacing.md,
     fontSize: FontSizes.md,
-    color: LightColors.textSecondary,
+    color: colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -168,13 +178,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: LightColors.border,
-    backgroundColor: LightColors.background,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
   headerTitle: {
       fontSize: FontSizes.lg,
       fontWeight: 'bold',
-      color: LightColors.textPrimary,
+      color: colors.textPrimary,
   },
   closeButton: {
       padding: 4,
@@ -184,7 +194,8 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
       marginBottom: Spacing.lg,
-      backgroundColor: BrandColors.primary,
+      backgroundColor: BrandColors.primary, // Brand color usually looks fine in dark mode too
+      borderWidth: 0, // No border needed for colored card
   },
   testTitle: {
       fontSize: FontSizes.lg,
@@ -227,6 +238,7 @@ const styles = StyleSheet.create({
       padding: Spacing.md,
       borderRadius: BorderRadius.md,
       alignItems: 'center',
+      // Background color is handled inline for dynamic opacity
   },
   overviewValue: {
       fontSize: FontSizes.xl,
@@ -235,16 +247,19 @@ const styles = StyleSheet.create({
   },
   overviewLabel: {
       fontSize: FontSizes.sm,
-      color: LightColors.textSecondary,
+      color: colors.textSecondary,
   },
   sectionHeader: {
       fontSize: FontSizes.lg,
       fontWeight: 'bold',
-      color: LightColors.textPrimary,
+      color: colors.textPrimary,
       marginBottom: Spacing.md,
   },
   sectionCard: {
       marginBottom: Spacing.md,
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+      borderWidth: 1,
   },
   sectionTitleRow: {
       flexDirection: 'row',
@@ -255,7 +270,7 @@ const styles = StyleSheet.create({
   sectionName: {
       fontSize: FontSizes.base,
       fontWeight: '600',
-      color: LightColors.textPrimary,
+      color: colors.textPrimary,
   },
   sectionScore: {
       fontSize: FontSizes.base,
@@ -278,7 +293,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
       fontSize: FontSizes.xs,
-      color: LightColors.textSecondary,
+      color: colors.textSecondary,
   },
   homeButton: {
       marginTop: Spacing.lg,

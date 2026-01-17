@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QuestionPalette } from '../../../src/components/test/QuestionPalette';
 import { QuestionViewer } from '../../../src/components/test/QuestionViewer';
 import { TestHeader } from '../../../src/components/test/TestHeader';
+import { GlassView } from '../../../src/components/ui/GlassView';
 import { API_CONFIG } from '../../../src/config/api.config';
-import { BrandColors, LightColors, Spacing } from '../../../src/constants/theme';
+import { BrandColors, ColorScheme, Spacing } from '../../../src/constants/theme';
+import { useTheme } from '../../../src/contexts/ThemeContext';
 import { useTestEngine } from '../../../src/hooks/useTestEngine';
 import { useTestSecurity } from '../../../src/hooks/useTestSecurity';
 import { mockTestService } from '../../../src/mocks';
@@ -19,12 +21,16 @@ const getTestService = () => API_CONFIG.USE_MOCK ? mockTestService : testService
 export default function TestAttemptScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
+  
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
   const [flatQuestions, setFlatQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPalette, setShowPalette] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const insets = useSafeAreaInsets();
+
+  const styles = getStyles(colors, isDark);
 
   // Initialize Test Data
   useEffect(() => {
@@ -152,7 +158,7 @@ export default function TestAttemptScreen() {
 
       <View style={styles.content}>
         {showPalette && (
-            <View style={styles.paletteOverlay}>
+            <GlassView style={styles.paletteOverlay} intensity={95}>
                 <QuestionPalette
                   totalQuestions={totalQuestions}
                   currentQuestionIndex={currentQuestionIndex}
@@ -161,7 +167,7 @@ export default function TestAttemptScreen() {
                   onQuestionSelect={handlePaletteSelect}
                   isVisible={true}
                 />
-            </View>
+            </GlassView>
         )}
 
         <QuestionViewer
@@ -172,7 +178,10 @@ export default function TestAttemptScreen() {
       </View>
       
       {/* Bottom Navigation */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(Spacing.md, insets.bottom) }]}>
+      <GlassView 
+        style={[styles.bottomBar, { paddingBottom: Math.max(Spacing.md, insets.bottom) }]}
+        intensity={80}
+      >
         <TouchableOpacity onPress={clearResponse} style={styles.actionButton}>
              <Text style={styles.actionText}>Clear</Text>
         </TouchableOpacity>
@@ -192,7 +201,7 @@ export default function TestAttemptScreen() {
                 disabled={currentQuestionIndex === 0}
                 style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
             >
-                <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? LightColors.textMuted : '#fff'} />
+                <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? colors.textMuted : '#fff'} />
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -200,32 +209,32 @@ export default function TestAttemptScreen() {
                 disabled={currentQuestionIndex === totalQuestions - 1}
                 style={[styles.navButton, currentQuestionIndex === totalQuestions - 1 && styles.navButtonDisabled]}
             >
-                <Ionicons name="chevron-forward" size={20} color={currentQuestionIndex === totalQuestions - 1 ? LightColors.textMuted : '#fff'} />
+                <Ionicons name="chevron-forward" size={20} color={currentQuestionIndex === totalQuestions - 1 ? colors.textMuted : '#fff'} />
                 <Text style={[styles.navButtonText, currentQuestionIndex === totalQuestions - 1 && styles.textDisabled]}>
                     {currentQuestionIndex === totalQuestions - 1 ? 'Last' : 'Next'}
                 </Text>
             </TouchableOpacity>
         </View>
-      </View>
+      </GlassView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: Spacing.md,
     fontSize: 16,
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
   },
   content: {
     flex: 1,
@@ -237,10 +246,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    backgroundColor: LightColors.background,
+    // On iOS, background is transparent to show blur. On Android, fallback to color.
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.card,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: isDark ? 0.3 : 0.2,
     shadowRadius: 4,
     elevation: 5,
   },
@@ -250,8 +260,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: LightColors.border,
-    backgroundColor: LightColors.background,
+    borderTopColor: colors.border,
+    // On iOS, transparent. On Android, solid.
+    backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.background,
   },
   actionButton: {
     flexDirection: 'row',
@@ -278,13 +289,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   navButtonDisabled: {
-    backgroundColor: LightColors.border,
+    backgroundColor: colors.border,
   },
   navButtonText: {
     color: '#fff',
     fontWeight: '600',
   },
   textDisabled: {
-      color: LightColors.textMuted
+      color: colors.textMuted
   }
 });
