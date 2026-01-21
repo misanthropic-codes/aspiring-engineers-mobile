@@ -130,35 +130,37 @@ export const authService = {
   /**
    * Get current user profile
    * GET /auth/profile
+   * Note: This endpoint returns minimal data in this backend implementation.
    */
   getCurrentUser: async (): Promise<User> => {
     try {
-      const response = await apiClient.get<{
-        _id: string;
-        identifier: string;
-        roles: string[];
-      }>('/auth/profile');
+      // Use direct apiClient to inspect full response
+      const response = await apiClient.get<any>('/auth/profile');
+      const payload = response.data;
+      
+      if (__DEV__) {
+        console.log('👤 /auth/profile payload:', payload);
+      }
 
-      // Get full user data from storage if available
-      const savedUser = await storage.get<User>(STORAGE_KEYS.USER);
-
-      // Merge API data with saved user data
-      const user: User = {
-        ...savedUser,
-        id: response.data._id,
-        email: response.data.identifier,
-        name: savedUser?.name || '',
-        phone: savedUser?.phone || '',
-        dateOfBirth: savedUser?.dateOfBirth || '',
-        examTargets: savedUser?.examTargets || [],
-        targetYear: savedUser?.targetYear || new Date().getFullYear(),
-        createdAt: savedUser?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      // Handle both { success, data } and direct payload formats
+      const data = payload?.data || payload;
+      
+      // Map minimal data to User interface
+      // Web client: uses _id and identifier
+      const user: Partial<User> = {
+        id: data?.id || data?._id || '',
+        email: data?.email || data?.identifier || '',
+        name: data?.name || '',
       };
 
-      console.log('✅ Profile fetched successfully');
-      return user;
+      // Only save to storage if we have at least an ID
+      if (user.id) {
+        await storage.set(STORAGE_KEYS.USER, user);
+      }
+
+      return user as User;
     } catch (error) {
+      console.error('❌ Failed to fetch auth profile:', error);
       throw new Error(handleApiError(error));
     }
   },

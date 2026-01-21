@@ -1,57 +1,77 @@
 /**
  * Dashboard Screen - Test Portal Mobile
  * 
- * Main dashboard showing user stats, upcoming tests, and quick actions.
+ * Main dashboard showing user stats, purchased packages, and quick actions.
+ * Matches test-portal-client dashboard API endpoints.
  */
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, CardContent, CardHeader, CardTitle } from '../../src/components/ui';
-import { API_CONFIG } from '../../src/config/api.config';
 import {
-    BorderRadius,
-    BrandColors,
-    ColorScheme,
-    FontSizes,
-    Spacing,
+  BorderRadius,
+  BrandColors,
+  ColorScheme,
+  FontSizes,
+  Spacing,
 } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { useTheme } from '../../src/contexts/ThemeContext'; // Import theme hook
-import { mockDashboardService } from '../../src/mocks';
-import { mockStoreItems } from '../../src/mocks/mockData';
-import { dashboardService } from '../../src/services/dashboard.service';
-import { DashboardStats } from '../../src/types';
-
-const getDashboardService = () => API_CONFIG.USE_MOCK ? mockDashboardService : dashboardService;
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { PurchasedPackage, purchasesService } from '../../src/services/purchases.service';
+import { testService } from '../../src/services/test.service';
+import { userService } from '../../src/services/user.service';
+import { MyTestsResponse } from '../../src/types';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { colors, isDark } = useTheme(); // Use theme
-  const styles = useMemo(() => getStyles(colors), [colors]); // Dynamic styles
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
 
   const [refreshing, setRefreshing] = React.useState(false);
-  const [stats, setStats] = React.useState<DashboardStats | null>(null);
   const [loading, setLoading] = React.useState(true);
+  
+  // Purchased content
+  const [packages, setPackages] = React.useState<PurchasedPackage[]>([]);
+  const [totalSpent, setTotalSpent] = React.useState(0);
+  const [totalPurchases, setTotalPurchases] = React.useState(0);
+  
+  // My Tests data
+  const [myTestsData, setMyTestsData] = React.useState<MyTestsResponse | null>(null);
 
-  const fetchStats = React.useCallback(async () => {
+  const fetchDashboardData = React.useCallback(async () => {
     try {
-      const service = getDashboardService();
-      const data = await service.getStats();
-      setStats(data);
+      setLoading(true);
+      
+      // Use userService for detailed profile and stats (same as web)
+      const userData = await userService.getUserProfile();
+      
+      if (__DEV__) {
+        console.log('📊 Dashboard usage stats:', userData?.stats);
+      }
+
+      // Fetch purchased packages
+      const purchasedData = await purchasesService.getPurchasedContent();
+      setPackages(purchasedData.purchasedPackages);
+      setTotalSpent(purchasedData.totalSpent);
+      setTotalPurchases(purchasedData.totalPurchases);
+      
+      // Fetch my tests stats
+      const myTests = await testService.getMyTests();
+      setMyTestsData(myTests);
     } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
+      console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -59,13 +79,13 @@ export default function DashboardScreen() {
   }, []);
 
   React.useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    fetchStats();
-  }, [fetchStats]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -98,8 +118,8 @@ export default function DashboardScreen() {
               <View style={[styles.statIcon, { backgroundColor: `${BrandColors.primary}15` }]}>
                 <Ionicons name="book" size={20} color={BrandColors.primary} />
               </View>
-              <Text style={styles.statValue}>{stats?.testsThisWeek || 0}</Text>
-              <Text style={styles.statLabel}>Tests This Week</Text>
+              <Text style={styles.statValue}>{user?.stats?.testsAttempted || 0}</Text>
+              <Text style={styles.statLabel}>Tests Taken</Text>
             </View>
           </Card>
 
@@ -108,7 +128,7 @@ export default function DashboardScreen() {
               <View style={[styles.statIcon, { backgroundColor: isDark ? `${colors.success}20` : `${colors.success}15` }]}>
                 <Ionicons name="trending-up" size={20} color={colors.success} />
               </View>
-              <Text style={styles.statValue}>{stats?.averageScoreThisWeek || '-'}</Text>
+              <Text style={styles.statValue}>{user?.stats?.averageScore ? `${user.stats.averageScore.toFixed(0)}%` : '-'}</Text>
               <Text style={styles.statLabel}>Avg Score</Text>
             </View>
           </Card>
@@ -118,120 +138,98 @@ export default function DashboardScreen() {
               <View style={[styles.statIcon, { backgroundColor: isDark ? `${colors.warning}20` : `${colors.warning}15` }]}>
                 <Ionicons name="time" size={20} color={colors.warning} />
               </View>
-              <Text style={styles.statValue}>{stats ? Math.round(stats.weekStudyTime / 60) : '-'}</Text>
+              <Text style={styles.statValue}>{user?.stats?.totalStudyHours || '-'}</Text>
               <Text style={styles.statLabel}>Study Hours</Text>
             </View>
           </Card>
         </View>
 
-        {/* Upcoming Tests */}
-        <Card style={styles.section}>
-          <CardHeader>
-            <CardTitle>Upcoming Tests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats?.upcomingTests && stats.upcomingTests.length > 0 ? (
-              stats.upcomingTests.map((test) => (
-                <TouchableOpacity 
-                  key={test.testId} 
-                  style={styles.testItem}
-                  onPress={() => router.push(`/test/attempt/${test.testId}`)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.testIcon}>
-                    <Ionicons name="calendar" size={20} color={BrandColors.primary} />
-                  </View>
-                  <View style={styles.testInfo}>
-                    <Text style={styles.testTitle} numberOfLines={1}>{test.title}</Text>
-                    <Text style={styles.testTime}>
-                      {new Date(test.scheduledAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={48}
-                  color={colors.textMuted}
-                />
-                <Text style={styles.emptyText}>No upcoming tests</Text>
-                <Text style={styles.emptySubtext}>
-                  Your scheduled tests will appear here
-                </Text>
-              </View>
-            )}
-          </CardContent>
-        </Card>
+        {/* Purchased Packages Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>My Purchased Packages</Text>
+          <TouchableOpacity onPress={() => router.push('/store')}>
+            <Text style={styles.viewAllText}>Browse More</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Suggested For You */}
-        <Card style={styles.section}>
-          <CardHeader>
-            <CardTitle>Suggested for You</CardTitle>
-          </CardHeader>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.suggestedScroll}
+        {packages.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.packagesScroll}
           >
-             {mockStoreItems.filter(i => i.isRecommended).map((item) => (
-                <TouchableOpacity 
-                   key={item.id}
-                   style={[styles.suggestedCard, { backgroundColor: isDark ? '#1a2b3c' : '#f0f9ff', borderColor: colors.border }]}
-                   onPress={() => router.push('/(tabs)/store')}
-                   activeOpacity={0.8}
-                >
-                    <Image source={{ uri: item.image }} style={styles.suggestedImage} />
-                    <View style={styles.suggestedContent}>
-                        <View style={styles.suggestedBadge}>
-                            <Text style={styles.suggestedBadgeText}>{item.category}</Text>
-                        </View>
-                        <Text style={styles.suggestedTitle} numberOfLines={2}>{item.title}</Text>
-                        <Text style={styles.suggestedPrice}>₹{item.price}</Text>
-                    </View>
-                </TouchableOpacity>
-             ))}
+            {packages.map((pkg) => (
+              <TouchableOpacity
+                key={pkg.packageId}
+                style={styles.packageCard}
+                onPress={() => router.push(`/packages/${pkg.packageId}`)}
+              >
+                <Image
+                  source={{ uri: pkg.thumbnail || 'https://via.placeholder.com/300x150' }}
+                  style={styles.packageThumbnail}
+                />
+                <View style={styles.packageContent}>
+                  <Text style={styles.packageCategory}>{pkg.category}</Text>
+                  <Text style={styles.packageNameTitle} numberOfLines={2}>
+                    {pkg.packageName}
+                  </Text>
+                  <Text style={styles.packageTestsCount}>
+                    {pkg.tests.length} test{pkg.tests.length !== 1 ? 's' : ''} available
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
-        </Card>
+        ) : (
+          <Card style={styles.section}>
+            <CardContent>
+              <View style={styles.emptyState}>
+                <Ionicons name="cart-outline" size={48} color={colors.textMuted} />
+                <Text style={styles.emptyText}>No purchased packages yet</Text>
+                <TouchableOpacity 
+                  style={styles.browseButton}
+                  onPress={() => router.push('/store')}
+                >
+                  <Text style={styles.browseButtonText}>Explore Store</Text>
+                </TouchableOpacity>
+              </View>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Recent Activity */}
+        {/* Recent Performance */}
         <Card style={styles.section}>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle>My Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats?.recentActivity && stats.recentActivity.length > 0 ? (
-              stats.recentActivity.map((activity, index) => (
-                <TouchableOpacity 
-                    key={index} 
-                    style={styles.activityItem}
-                    onPress={() => router.push(`/test/result/${activity.attemptId}`)}
-                >
-                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                  <View style={styles.activityInfo}>
-                    <Text style={styles.activityTitle}>{activity.testTitle}</Text>
-                    <Text style={styles.activityTime}>
-                      Completed on {new Date(activity.timestamp).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name="time-outline"
-                  size={48}
-                  color={colors.textMuted}
-                />
-                <Text style={styles.emptyText}>No recent activity</Text>
-                <Text style={styles.emptySubtext}>
-                  Take a test to see your activity here
-                </Text>
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={() => router.push('/analytics')}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: `${colors.success}15` }]}>
+                <Ionicons name="analytics" size={24} color={colors.success} />
               </View>
-            )}
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionTitle}>Detailed Analytics</Text>
+                <Text style={styles.actionDesc}>Check your subject-wise performance</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.quickAction}
+              onPress={() => router.push('/tests')}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: `${BrandColors.primary}15` }]}>
+                <Ionicons name="list" size={24} color={BrandColors.primary} />
+              </View>
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionTitle}>Available Tests</Text>
+                <Text style={styles.actionDesc}>Browse and take new tests</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
           </CardContent>
         </Card>
       </ScrollView>
@@ -324,98 +322,101 @@ const getStyles = (colors: ColorScheme) => StyleSheet.create({
     marginTop: Spacing.xs,
     textAlign: 'center',
   },
-  testItem: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  viewAllText: {
+    fontSize: FontSizes.sm,
+    color: BrandColors.primary,
+    fontWeight: '600',
+  },
+  packagesScroll: {
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  packageCard: {
+    width: 260,
+    backgroundColor: colors.card,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: Spacing.md,
+    overflow: 'hidden',
+  },
+  packageThumbnail: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'cover',
+  },
+  packageContent: {
+    padding: Spacing.md,
+  },
+  packageCategory: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BrandColors.primary,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  packageNameTitle: {
+    fontSize: FontSizes.base,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 4,
+    height: 40,
+  },
+  packageTestsCount: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  browseButton: {
+    marginTop: Spacing.md,
+    backgroundColor: BrandColors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  browseButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: FontSizes.sm,
+  },
+  quickAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  testIcon: {
-    width: 36,
-    height: 36,
+  actionIcon: {
+    width: 48,
+    height: 48,
     borderRadius: BorderRadius.md,
-    backgroundColor: `${BrandColors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
   },
-  testInfo: {
+  actionInfo: {
     flex: 1,
   },
-  testTitle: {
+  actionTitle: {
     fontSize: FontSizes.base,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  testTime: {
-    fontSize: FontSizes.xs,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  activityInfo: {
-    marginLeft: Spacing.md,
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: FontSizes.sm,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
-  activityTime: {
-    fontSize: FontSizes.xs,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  suggestedScroll: {
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
-    gap: Spacing.md,
-  },
-  suggestedCard: {
-    width: 200,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    marginRight: Spacing.sm,
-    overflow: 'hidden',
-    padding: 0, 
-  },
-  suggestedImage: {
-    width: '100%',
-    height: 100,
-    resizeMode: 'cover',
-  },
-  suggestedContent: {
-    padding: Spacing.md,
-  },
-  suggestedBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: Spacing.sm,
-  },
-  suggestedBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  suggestedTitle: {
-    fontSize: FontSizes.sm,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: Spacing.xs,
-    height: 40,
   },
-  suggestedPrice: {
-    fontSize: FontSizes.md,
-    fontWeight: 'bold',
-    color: BrandColors.secondary,
+  actionDesc: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+    marginTop: 2,
   },
 });

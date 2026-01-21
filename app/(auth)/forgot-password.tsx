@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input } from '../../src/components/ui';
-import { API_CONFIG } from '../../src/config/api.config';
 import {
     BorderRadius,
     BrandColors,
@@ -26,7 +25,6 @@ import {
     LightColors,
     Spacing,
 } from '../../src/constants/theme';
-import { mockAuthService } from '../../src/mocks';
 import { isValidEmail } from '../../src/utils/validators';
 
 export default function ForgotPasswordScreen() {
@@ -44,22 +42,9 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      if (API_CONFIG.USE_MOCK) {
-        const response = await mockAuthService.forgotPassword(email);
-        setSuccess(response.message);
-      } else {
-        // TODO: Implement real API call
-        setSuccess('Password reset link sent to ' + email);
-      }
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to send reset link. Please try again.';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    // TODO: Implement real API call when available on backend
+    setSuccess('If an account exists for ' + email + ', you will receive a reset link shortly.');
+    setLoading(false);
   };
 
   return (

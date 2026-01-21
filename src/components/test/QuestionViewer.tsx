@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../constants/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Answer, Question, QuestionType } from '../../types';
@@ -48,14 +48,14 @@ export const QuestionViewer = ({
     }
   }, [question.id, answer?.numericalAnswer, numericalValue]);
 
-  const handleOptionSelect = (optionId: string) => {
+  const handleOptionSelect = (optionLetter: string) => {
     if (question.type === QuestionType.MCQ_SINGLE) {
-      onAnswerChange({ selectedOptions: [optionId] });
+      onAnswerChange({ selectedOptions: [optionLetter] });
     } else if (question.type === QuestionType.MCQ_MULTIPLE) {
       const currentSelected = answer?.selectedOptions || [];
-      const newSelected = currentSelected.includes(optionId)
-        ? currentSelected.filter(id => id !== optionId)
-        : [...currentSelected, optionId];
+      const newSelected = currentSelected.includes(optionLetter)
+        ? currentSelected.filter(letter => letter !== optionLetter)
+        : [...currentSelected, optionLetter];
       onAnswerChange({ selectedOptions: newSelected });
     }
   };
@@ -79,17 +79,18 @@ export const QuestionViewer = ({
   const renderOptions = () => {
     if (!question.options) return null;
 
-    return question.options.map((option, index) => {
-      const isSelected = answer?.selectedOptions?.includes(option.id);
+    return question.options.map((optionText, index) => {
+      const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
+      const isSelected = answer?.selectedOptions?.includes(optionLetter);
       
       return (
         <TouchableOpacity
-          key={option.id}
+          key={`${question.id}-opt-${index}`}
           style={[
             styles.optionCard,
             isSelected && styles.optionCardSelected,
           ]}
-          onPress={() => handleOptionSelect(option.id)}
+          onPress={() => handleOptionSelect(optionLetter)}
           activeOpacity={0.7}
         >
           <View style={[
@@ -100,14 +101,14 @@ export const QuestionViewer = ({
                  <View style={styles.optionDot} />
              )}
              {!isSelected && (
-                 <Text style={styles.optionLabel}>{String.fromCharCode(65 + index)}</Text>
+                 <Text style={styles.optionLabel}>{optionLetter}</Text>
              )}
           </View>
           <Text style={[
               styles.optionText,
               isSelected && styles.optionTextSelected
           ]}>
-            {option.text}
+            {optionText}
           </Text>
         </TouchableOpacity>
       );
@@ -130,6 +131,13 @@ export const QuestionViewer = ({
     );
   };
 
+  console.log('QuestionViewer rendering:', {
+    id: question.id,
+    type: question.type,
+    optionsCount: question.options?.length,
+    hasImage: !!((question as any).questionImage || (question as any).questionImageUrl),
+  });
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -142,11 +150,23 @@ export const QuestionViewer = ({
 
       <Text style={styles.questionText}>{question.questionText}</Text>
       
-      {/* TODO: Render Images if any */}
+      {/* Question Image */}
+      {(question as any).questionImage || (question as any).questionImageUrl ? (
+        <Image 
+          source={{ uri: (question as any).questionImage || (question as any).questionImageUrl }} 
+          style={styles.questionImage} 
+          resizeMode="contain"
+        />
+      ) : null}
 
       <View style={styles.answerArea}>
-        {(question.type === QuestionType.MCQ_SINGLE || question.type === QuestionType.MCQ_MULTIPLE) && renderOptions()}
-        {(question.type === QuestionType.NUMERICAL || question.type === QuestionType.INTEGER) && renderNumericalInput()}
+        {/* Render options if they exist, regardless of type as a fallback, 
+            but prioritize MCQ types for standard behavior */}
+        {(question.options && question.options.length > 0) ? renderOptions() : null}
+        
+        {(question.type === QuestionType.NUMERICAL || question.type === QuestionType.INTEGER) && 
+         (!question.options || question.options.length === 0) && 
+         renderNumericalInput()}
       </View>
     </ScrollView>
   );
@@ -264,5 +284,11 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
     fontWeight: 'bold',
     color: colors.textPrimary,
     backgroundColor: colors.input,
+  },
+  questionImage: {
+    width: '100%',
+    height: 200,
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.md,
   },
 });

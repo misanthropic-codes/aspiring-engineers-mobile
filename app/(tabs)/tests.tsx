@@ -8,28 +8,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, CardContent } from '../../src/components/ui';
-import { API_CONFIG } from '../../src/config/api.config';
 import {
-  BorderRadius,
-  BrandColors,
-  ColorScheme,
-  FontSizes,
-  Spacing,
+    BorderRadius,
+    BrandColors,
+    ColorScheme,
+    FontSizes,
+    Spacing,
 } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { mockTestService } from '../../src/mocks';
 import { testService } from '../../src/services/test.service';
 import { Test } from '../../src/types';
 
-const getTestService = () => API_CONFIG.USE_MOCK ? mockTestService : testService;
 
 export default function TestsScreen() {
   const router = useRouter();
@@ -42,8 +39,7 @@ export default function TestsScreen() {
 
   const fetchTests = React.useCallback(async () => {
     try {
-      const service = getTestService();
-      const data = await service.getAllTests();
+      const data = await testService.getAllTests();
       setTests(data.tests);
     } catch (error) {
       console.error('Failed to fetch tests:', error);

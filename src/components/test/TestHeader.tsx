@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../constants/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { formatTimerDisplay } from '../../utils/formatters';
 import { GlassView } from '../ui/GlassView';
+
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface TestHeaderProps {
   testTitle: string;
@@ -12,6 +14,9 @@ interface TestHeaderProps {
   onSubmit: () => void;
   onTogglePalette: () => void;
   showPalette: boolean;
+  saveStatus?: SaveStatus;
+  onSave?: () => void;
+  unsavedCount?: number;
 }
 
 export const TestHeader = ({
@@ -20,6 +25,9 @@ export const TestHeader = ({
   onSubmit,
   onTogglePalette,
   showPalette,
+  saveStatus = 'idle',
+  onSave,
+  unsavedCount = 0,
 }: TestHeaderProps) => {
   const { colors, isDark } = useTheme();
   
@@ -37,12 +45,44 @@ export const TestHeader = ({
   // Warning color when time is low (< 5 mins)
   const timerColor = timeRemaining < 300 ? colors.error : colors.textPrimary;
 
+  const getSaveStatusDisplay = () => {
+    switch (saveStatus) {
+      case 'saving':
+        return { icon: null, text: 'Saving...', color: '#f59e0b' }; // amber
+      case 'saved':
+        return { icon: 'cloud-done-outline' as const, text: 'Saved', color: colors.success };
+      case 'error':
+        return { icon: 'cloud-offline-outline' as const, text: 'Error', color: colors.error };
+      default:
+        if (unsavedCount > 0) {
+          return { icon: 'cloud-outline' as const, text: `${unsavedCount} unsaved`, color: colors.textMuted };
+        }
+        return { icon: 'cloud-done-outline' as const, text: 'Saved', color: colors.textMuted };
+    }
+  };
+
+  const saveDisplay = getSaveStatusDisplay();
   const styles = getStyles(colors, isDark);
 
   return (
     <GlassView style={styles.container} intensity={90}>
       <View style={styles.topRow}>
         <Text style={styles.title} numberOfLines={1}>{testTitle}</Text>
+        
+        {/* Save Status Indicator */}
+        <TouchableOpacity 
+          onPress={onSave} 
+          disabled={saveStatus === 'saving'}
+          style={styles.saveIndicator}
+        >
+          {saveStatus === 'saving' ? (
+            <ActivityIndicator size="small" color={saveDisplay.color} />
+          ) : (
+            <Ionicons name={saveDisplay.icon || 'cloud-outline'} size={16} color={saveDisplay.color} />
+          )}
+          <Text style={[styles.saveText, { color: saveDisplay.color }]}>{saveDisplay.text}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={handleSubmitPress} style={styles.submitButton}>
           <Text style={styles.submitText}>Submit</Text>
         </TouchableOpacity>
@@ -106,6 +146,20 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
     color: '#fff',
     fontSize: FontSizes.sm,
     fontWeight: '600',
+  },
+  saveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+    marginRight: Spacing.sm,
+  },
+  saveText: {
+    fontSize: FontSizes.xs,
+    fontWeight: '500',
   },
   bottomRow: {
     flexDirection: 'row',

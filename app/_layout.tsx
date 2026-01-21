@@ -12,7 +12,7 @@ import { ThemeProvider } from '../src/contexts/ThemeContext';
 
 // Inner component that can safely use hooks
 function RootLayoutNav() {
-  const { authState } = useAuth();
+  const { isAuthenticated } = useAuth();
   // potentially use theme hook here too for background color
 
   return (

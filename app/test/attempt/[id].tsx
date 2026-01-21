@@ -1,36 +1,83 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QuestionPalette } from '../../../src/components/test/QuestionPalette';
 import { QuestionViewer } from '../../../src/components/test/QuestionViewer';
-import { TestHeader } from '../../../src/components/test/TestHeader';
+import { SaveStatus, TestHeader } from '../../../src/components/test/TestHeader';
 import { GlassView } from '../../../src/components/ui/GlassView';
-import { API_CONFIG } from '../../../src/config/api.config';
 import { BrandColors, ColorScheme, Spacing } from '../../../src/constants/theme';
 import { useTheme } from '../../../src/contexts/ThemeContext';
 import { useTestEngine } from '../../../src/hooks/useTestEngine';
 import { useTestSecurity } from '../../../src/hooks/useTestSecurity';
-import { mockTestService } from '../../../src/mocks';
-import { testService } from '../../../src/services/test.service';
-import { Question, TestAttempt } from '../../../src/types';
+import { QuestionData, StartTestResponse, SubmitAnswerItem, testService } from '../../../src/services/test.service';
+import { Answer, Question, QuestionType } from '../../../src/types';
 
-const getTestService = () => API_CONFIG.USE_MOCK ? mockTestService : testService;
+
+// Attempt data structure from API
+interface AttemptData {
+  attemptId: string;
+  testId: string;
+  duration: number;
+  title: string;
+  sections: Array<{ sectionId: string; name: string; questions: QuestionData[] }>;
+}
 
 export default function TestAttemptScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   
-  const [attempt, setAttempt] = useState<TestAttempt | null>(null);
+  const [attemptData, setAttemptData] = useState<AttemptData | null>(null);
   const [flatQuestions, setFlatQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPalette, setShowPalette] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Auto-save state
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [unsavedCount, setUnsavedCount] = useState(0);
+  const lastSavedAnswersRef = useRef<Record<string, Answer>>({});
+  
   const insets = useSafeAreaInsets();
-
   const styles = getStyles(colors, isDark);
+
+  // Normalize question data from API
+  const normalizeQuestion = (q: QuestionData, index: number): Question => {
+    // API uses 'id' or 'questionId'
+    const id = q.id || q.questionId || `q-${index}`;
+    
+    // API uses 'type' or 'questionType'
+    // Map various strings to our QuestionType enum
+    let type = QuestionType.MCQ_SINGLE;
+    const apiType = (q.type || q.questionType || '').toUpperCase();
+    
+    if (apiType === 'MCQ_SINGLE' || apiType === 'SINGLE-CORRECT') {
+      type = QuestionType.MCQ_SINGLE;
+    } else if (apiType === 'MCQ_MULTI' || apiType === 'MCQ_MULTIPLE' || apiType === 'MULTIPLE-CORRECT') {
+      type = QuestionType.MCQ_MULTIPLE;
+    } else if (apiType === 'NUMERICAL' || apiType === 'INTEGER') {
+      type = apiType === 'NUMERICAL' ? QuestionType.NUMERICAL : QuestionType.INTEGER;
+    }
+
+    return {
+      id,
+      questionNumber: q.questionNumber || index + 1,
+      type,
+      questionText: q.questionText,
+      options: q.options || [],
+      marks: q.marks,
+      negativeMarks: q.negativeMarks,
+      isAnswered: q.isAnswered,
+      isMarkedForReview: q.isMarkedForReview,
+      savedAnswer: q.savedAnswer ? { 
+        selectedOptions: typeof q.savedAnswer === 'string' ? [q.savedAnswer] : (q.savedAnswer as any).selectedOptions 
+      } : undefined,
+      images: q.images || (q.questionImage || q.questionImageUrl ? [q.questionImage || q.questionImageUrl!] : []),
+      language: (q.language as any) || 'ENGLISH',
+    };
+  };
 
   // Initialize Test Data
   useEffect(() => {
@@ -38,15 +85,26 @@ export default function TestAttemptScreen() {
       try {
         if (!id) return;
         setLoading(true);
-        const service = getTestService();
-        // In real scenario, we might check if there's an existing attempt or start a new one
-        // For now, we assume startTest creates or resumes
-        const data = await service.startTest(id as string);
+        const response = await testService.startTest(id as string);
         
-        setAttempt(data);
-        const questions = data.sections.flatMap(s => s.questions);
+        // Real API returns StartTestResponse with nested data
+        const apiResponse = response as StartTestResponse;
+        setAttemptData({
+          attemptId: apiResponse.data.attemptId,
+          testId: apiResponse.data.testId,
+          duration: apiResponse.data.timing.remainingTime / 60, // convert seconds to minutes
+          title: apiResponse.data.test.title,
+          sections: apiResponse.data.sections,
+        });
+
+        // Use normalization helper when flattening questions
+        const questions = apiResponse.data.sections.flatMap(s => 
+          s.questions.map((q, idx) => normalizeQuestion(q, idx))
+        );
+        
         setFlatQuestions(questions);
       } catch (error) {
+        console.error('Error starting test:', error);
         Alert.alert('Error', 'Failed to start test');
         router.back();
       } finally {
@@ -56,24 +114,75 @@ export default function TestAttemptScreen() {
     fetchTest();
   }, [id]);
 
+  // Build answers payload from current answers
+  const buildAnswersPayload = useCallback((answers: Record<string, Answer>): SubmitAnswerItem[] => {
+    return Object.entries(answers).map(([questionId, answer]) => ({
+      questionId,
+      sectionId: 'default',
+      answer: {
+        selectedOptions: answer.selectedOptions,
+        numericalAnswer: answer.numericalAnswer,
+      },
+      timeSpent: 0, // Could track per-question time if needed
+    }));
+  }, []);
+
+  // Save progress handler
+  const handleSaveProgress = useCallback(async (answers: Record<string, Answer>) => {
+    if (!attemptData || saveStatus === 'saving') return;
+    
+    const payload = buildAnswersPayload(answers);
+    if (payload.length === 0) return;
+    
+    setSaveStatus('saving');
+    try {
+      await testService.saveProgress(attemptData.attemptId, payload);
+      lastSavedAnswersRef.current = { ...answers };
+      setUnsavedCount(0);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  }, [attemptData, saveStatus, buildAnswersPayload]);
+
+  // Submit handler - uses answersRef to avoid dependency issues
+  const answersRef = useRef<Record<string, Answer>>({});
+  
   const handleSubmit = useCallback(async () => {
-    if (!attempt || submitting) return;
+    if (!attemptData || submitting) return;
     
     setSubmitting(true);
     try {
-      const service = getTestService();
-      await service.submitTest(attempt.attemptId);
-      // Clean up local mock state or handle real backend response
+      const payload = buildAnswersPayload(answersRef.current);
+      console.log('📤 Submitting test payload:', payload.length, 'answers');
       
-      // Navigate to result screen
-      // We pass the attemptId which is used to fetch results
-      // In mock service, getResult expects attemptId
-      router.replace(`/test/result/${attempt.attemptId}`);
+      const result = await testService.submitTest(attemptData.attemptId, { answers: payload });
+      
+      if (__DEV__) {
+        console.log('✅ Test submitted successfully:', {
+          success: result.success,
+          resultId: result.data?.resultId,
+          attemptId: result.data?.attemptId
+        });
+      }
+
+      const resultId = result.data?.resultId;
+      if (resultId) {
+        router.replace(`/test/result/${resultId}`);
+      } else {
+        console.error('❌ Result ID missing in submit response');
+        Alert.alert('Success', 'Test submitted successfully, but could not load results directly. Please check test history.');
+        router.replace('/');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit test');
+      console.error('❌ Error submitting test:', error);
+      Alert.alert('Error', 'Failed to submit test. Please check your connection.');
       setSubmitting(false);
     }
-  }, [attempt, submitting]);
+  }, [attemptData, submitting, buildAnswersPayload]);
 
   // Hook: Test Engine
   const {
@@ -91,8 +200,8 @@ export default function TestAttemptScreen() {
     clearResponse,
   } = useTestEngine({
     questions: flatQuestions,
-    duration: attempt ? attempt.duration * 60 : 0,
-    enabled: !!attempt && !loading,
+    duration: attemptData ? attemptData.duration * 60 : 0,
+    enabled: !!attemptData && !loading,
     onTimeUp: () => {
       Alert.alert('Time Up', 'Your test time has ended.', [
         { text: 'Submit', onPress: handleSubmit }
@@ -113,7 +222,7 @@ export default function TestAttemptScreen() {
   }, []);
 
   useTestSecurity({
-    enabled: !!attempt && !loading,
+    enabled: !!attemptData && !loading,
     onViolation: handleSecurityViolation,
     maxWarnings: 2,
   });
@@ -130,12 +239,33 @@ export default function TestAttemptScreen() {
     return () => backHandler.remove();
   }, [handleSubmit]);
 
+  // Keep answersRef in sync and track unsaved count for auto-save
+  useEffect(() => {
+    answersRef.current = answers;
+    const savedKeys = Object.keys(lastSavedAnswersRef.current);
+    const currentKeys = Object.keys(answers);
+    const newAnswers = currentKeys.filter(k => !savedKeys.includes(k) || answers[k] !== lastSavedAnswersRef.current[k]);
+    setUnsavedCount(newAnswers.length);
+    
+    // Auto-save when 2+ unsaved answers
+    if (newAnswers.length >= 2 && saveStatus !== 'saving') {
+      handleSaveProgress(answers);
+    }
+  }, [answers, handleSaveProgress, saveStatus]);
+
+  // Manual save handler
+  const handleManualSave = useCallback(() => {
+    if (Object.keys(answers).length > 0) {
+      handleSaveProgress(answers);
+    }
+  }, [answers, handleSaveProgress]);
+
   const handlePaletteSelect = (index: number) => {
     goToQuestion(index);
     setShowPalette(false);
   };
 
-  if (loading || !attempt) {
+  if (loading || !attemptData) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={BrandColors.primary} />
@@ -149,11 +279,14 @@ export default function TestAttemptScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       
       <TestHeader
-        testTitle="Test Attempt" // You might want to get this from somewhere
+        testTitle={attemptData.title}
         timeRemaining={timeRemaining}
         onSubmit={handleSubmit}
         onTogglePalette={() => setShowPalette(!showPalette)}
         showPalette={showPalette}
+        saveStatus={saveStatus}
+        onSave={handleManualSave}
+        unsavedCount={unsavedCount}
       />
 
       <View style={styles.content}>

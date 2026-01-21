@@ -29,6 +29,11 @@ export const storage = {
    */
   set: async <T>(key: string, value: T): Promise<void> => {
     try {
+      if (value === undefined || value === null) {
+        console.warn(`[storage] Attempted to set undefined/null for key: ${key}. Removing instead.`);
+        await storage.remove(key);
+        return;
+      }
       await AsyncStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
     } catch (error) {
       console.error(`Error writing to AsyncStorage for key "${key}":`, error);

@@ -7,22 +7,19 @@
 
 import { router } from 'expo-router';
 import React, {
-    createContext,
-    ReactNode,
-    useCallback,
-    useContext,
-    useEffect,
-    useState,
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from 'react';
-import { API_CONFIG } from '../config/api.config';
-import { mockAuthService } from '../mocks';
 import authService, { RegisterResponse } from '../services/auth.service';
+import userService from '../services/user.service';
 import { AuthResponse, LoginCredentials, RegisterData, User } from '../types';
 import { storage, STORAGE_KEYS } from '../utils/storage';
 import { tokenManager } from '../utils/tokenManager';
 
-// Get the appropriate auth service based on config
-const getAuthService = () => API_CONFIG.USE_MOCK ? mockAuthService : authService;
 
 // ============================================
 // Types
@@ -79,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login handler
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
-      const service = getAuthService();
-      const response: AuthResponse = await service.login(credentials);
+      const response: AuthResponse = await authService.login(credentials);
 
       // Store tokens securely
       await tokenManager.setAuthToken(response.token);
@@ -88,8 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Store user data
       await storage.set(STORAGE_KEYS.USER, response.user);
-
       setUser(response.user);
+
+      // Fetch full profile immediately to get stats
+      try {
+        const fullProfile = await userService.getUserProfile();
+        await storage.set(STORAGE_KEYS.USER, fullProfile);
+        setUser(fullProfile);
+      } catch (e) {
+        console.warn('Could not fetch full profile during login:', e);
+      }
       
       // Navigate to dashboard
       router.replace('/(tabs)' as any);
@@ -102,8 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (data: RegisterData): Promise<RegisterResponse> => {
     try {
       // Registration returns email/name but NO tokens (user must verify email first)
-      const service = getAuthService();
-      const response = await service.register(data);
+      const response = await authService.register(data);
 
       console.log('✅ Registration successful, OTP sent to:', response.email);
 
@@ -123,8 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('🔄 Refreshing session...');
-      const service = getAuthService();
-      const response = await service.refreshToken(refreshToken);
+      const response = await authService.refreshToken(refreshToken);
 
       if (response.refreshToken) {
         console.log('✅ Session refreshed with new refresh token');
@@ -142,8 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Refresh profile handler
   const refreshProfile = useCallback(async () => {
     try {
-      const service = getAuthService();
-      const updatedUser = await service.getCurrentUser();
+      const updatedUser = await userService.getUserProfile();
 
       // Update state and storage
       await storage.set(STORAGE_KEYS.USER, updatedUser);
@@ -151,16 +152,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('✅ Profile refreshed successfully');
     } catch (error) {
-      throw error;
+      console.error('❌ Profile refresh failed:', error);
+      // Fallback: try auth profile if detailed profile fails
+      try {
+        const minimalUser = await authService.getCurrentUser();
+        setUser(prev => ({ ...prev, ...minimalUser } as User));
+      } catch (e) {
+        console.error('❌ Minimal profile fallback also failed');
+      }
     }
   }, []);
 
   // Logout handler
   const logout = useCallback(async () => {
     try {
-      // Call logout API to invalidate token on server
-      const service = getAuthService();
-      await service.logout();
+      await authService.logout();
     } catch (error) {
       // Continue with logout even if API fails
       console.error('Logout error:', error);

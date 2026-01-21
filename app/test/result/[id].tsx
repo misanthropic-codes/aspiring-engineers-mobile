@@ -6,12 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, CardContent } from '../../../src/components/ui';
 import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../../src/constants/theme';
 import { useTheme } from '../../../src/contexts/ThemeContext';
-import { mockResultsService } from '../../../src/mocks';
+import { resultsService } from '../../../src/services/results.service';
 import { TestResult } from '../../../src/types';
 import { formatPercentage, formatRank } from '../../../src/utils/formatters';
 
-// Placeholder for real service
-const getResultsService = () => mockResultsService; 
 
 export default function ResultScreen() {
   const { id } = useLocalSearchParams(); // attemptId
@@ -28,12 +26,11 @@ export default function ResultScreen() {
       try {
         if (!id) return;
         setLoading(true);
-        const service = getResultsService();
-        const data = await service.getResult(id as string);
+        const data = await resultsService.getResult(id as string);
         setResult(data);
       } catch (error) {
         Alert.alert('Error', 'Failed to load results');
-        router.replace('/(tabs)/');
+        router.replace('/(tabs)');
       } finally {
         setLoading(false);
       }
@@ -44,7 +41,7 @@ export default function ResultScreen() {
   // Prevent back navigation to test
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.replace('/(tabs)/');
+      router.replace('/(tabs)');
       return true;
     });
     return () => backHandler.remove();
@@ -71,7 +68,7 @@ export default function ResultScreen() {
         
         <View style={styles.header}>
             <Text style={styles.headerTitle}>Test Result</Text>
-            <TouchableOpacity onPress={() => router.replace('/(tabs)/')} style={styles.closeButton}>
+            <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
         </View>
@@ -145,7 +142,7 @@ export default function ResultScreen() {
             ))}
 
             <Button 
-                onPress={() => router.replace('/(tabs)/')}
+                onPress={() => router.replace('/(tabs)')}
                 style={styles.homeButton}
             >
                 Back to Dashboard

@@ -1,64 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { mockPyqPapers, mockSubjectWisePapers } from '../../src/mocks/mockData';
 
 export default function PyqScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const styles = getStyles(colors, isDark);
 
-  const handleOpenPdf = (url: string, title: string) => {
-    router.push({
-        pathname: '/pyq/viewer',
-        params: { url, title }
-    });
-  };
-
-  const renderSectionHeader = (title: string, subtitle: string) => (
-    <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-    </View>
-  );
-
-  const renderPyqCard = (item: typeof mockPyqPapers[0]) => (
-    <TouchableOpacity 
-        style={styles.card} 
-        onPress={() => handleOpenPdf(item.pdfUrl, item.title)}
-        activeOpacity={0.7}
-    >
-        <View style={styles.cardContent}>
-            <View style={styles.iconContainer}>
-                <Ionicons name="document-text-outline" size={24} color={BrandColors.primary} />
-            </View>
-            <View style={styles.cardInfo}>
-                <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-                    {item.badge && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{item.badge}</Text>
-                        </View>
-                    )}
-                </View>
-                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-                
-                <View style={styles.metaContainer}>
-                    {item.metadata.map((meta, idx) => (
-                        <View key={idx} style={styles.metaItem}>
-                            <Text style={styles.metaLabel}>{meta.label}:</Text>
-                            <Text style={styles.metaValue}>{meta.value}</Text>
-                            {idx < item.metadata.length - 1 && <View style={styles.metaDivider} />}
-                        </View>
-                    ))}
-                </View>
-            </View>
-        </View>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
@@ -72,42 +23,14 @@ export default function PyqScreen() {
         }} 
       />
       
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {renderSectionHeader('Year-wise Question Papers', 'Practice with actual JEE Mains papers')}
-        
-        <View style={styles.grid}>
-            {mockPyqPapers.map((paper, index) => (
-                <View key={index} style={styles.gridItem}>
-                    {renderPyqCard(paper)}
-                </View>
-            ))}
+        <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={80} color={colors.textMuted} />
+            <Text style={styles.emptyTitle}>PYQs Coming Soon</Text>
+            <Text style={styles.emptySubtext}>
+                We are currently compiling previous year question papers for you. 
+                Stay tuned for updates!
+            </Text>
         </View>
-
-        <View style={styles.divider} />
-
-        {renderSectionHeader('Subject-wise Collections', 'Topic-wise detailed practice')}
-        
-        <View style={styles.grid}>
-            {mockSubjectWisePapers.map((paper, index) => (
-                <View key={index} style={styles.gridItem}>
-                    <TouchableOpacity 
-                        style={styles.subjectCard} 
-                        onPress={() => handleOpenPdf(paper.pdfUrl, paper.title)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(37, 150, 190, 0.2)' : 'rgba(37, 150, 190, 0.1)' }]}>
-                            <Ionicons name="download-outline" size={24} color={BrandColors.secondary} />
-                        </View>
-                        <View style={styles.cardInfo}>
-                             <Text style={styles.cardTitle}>{paper.title}</Text>
-                             <Text style={styles.cardDesc}>{paper.description}</Text>
-                             {paper.badge && <Text style={styles.subjectBadge}>{paper.badge}</Text>}
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            ))}
-        </View>
-      </ScrollView>
     </View>
   );
 }
@@ -242,5 +165,24 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
     color: BrandColors.secondary,
     fontWeight: '600',
     marginTop: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl * 3,
+    marginTop: Spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginTop: Spacing.md,
+  },
+  emptySubtext: {
+    fontSize: FontSizes.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.xl * 2,
+    lineHeight: 24,
   },
 });

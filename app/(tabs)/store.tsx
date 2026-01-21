@@ -1,42 +1,61 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { mockStoreItems } from '../../src/mocks/mockData';
+import { Package, packagesService } from '../../src/services/packages.service';
 
 export default function StoreScreen() {
   const { colors, isDark } = useTheme();
   const styles = getStyles(colors, isDark);
 
-  const handleBuyNow = (link: string) => {
+  const [packages, setPackages] = React.useState<Package[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        setLoading(true);
+        const response = await packagesService.getPackages();
+        setPackages(response.data);
+      } catch (error) {
+        console.error('Failed to fetch packages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPackages();
+  }, []);
+
+  const handleBuyNow = (link: string | undefined) => {
+    if (!link) return;
     Linking.openURL(link).catch(err => console.error("Couldn't load page", err));
   };
 
-  const renderStoreItem = (item: typeof mockStoreItems[0]) => (
+  const renderStoreItem = (item: Package) => (
     <TouchableOpacity 
-      key={item.id} 
+      key={item._id} 
       style={styles.card}
-      onPress={() => handleBuyNow(item.link)}
+      onPress={() => item.thumbnail && handleBuyNow(item.thumbnail)} // Placeholder for purchase link
       activeOpacity={0.9}
     >
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
+      {item.thumbnail && <Image source={{ uri: item.thumbnail }} style={styles.cardImage} />}
       <View style={styles.cardContent}>
         <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{item.category}</Text>
+          <Text style={styles.categoryText}>{item.type.toUpperCase()}</Text>
         </View>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
         <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
         
         <View style={styles.priceContainer}>
            <View>
-              <Text style={styles.currentPrice}>₹{item.price}</Text>
-              <Text style={styles.originalPrice}>₹{item.originalPrice}</Text>
+              <Text style={styles.currentPrice}>₹{item.discountPrice || item.price}</Text>
+              {item.discountPrice && <Text style={styles.originalPrice}>₹{item.price}</Text>}
            </View>
            <TouchableOpacity 
               style={styles.buyButton}
-              onPress={() => handleBuyNow(item.link)}
+              onPress={() => handleBuyNow(item.thumbnail)}
            >
               <Text style={styles.buyButtonText}>Buy Now</Text>
            </TouchableOpacity>
@@ -56,7 +75,17 @@ export default function StoreScreen() {
         {/* Categories / Filter could go here */}
         
         <View style={styles.grid}>
-          {mockStoreItems.map(renderStoreItem)}
+          {loading ? (
+            <ActivityIndicator size="large" color={BrandColors.primary} style={{ marginTop: 40 }} />
+          ) : packages.length > 0 ? (
+            packages.map(renderStoreItem)
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="cart-outline" size={64} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>No Packages Available</Text>
+              <Text style={styles.emptySubtext}>Check back later for new courses and test series.</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.supportCard}>
@@ -191,5 +220,23 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   supportDesc: {
     fontSize: FontSizes.sm,
     color: colors.textSecondary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl * 2,
+    marginTop: Spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginTop: Spacing.md,
+  },
+  emptySubtext: {
+    fontSize: FontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: Spacing.xs,
+    paddingHorizontal: Spacing.xl,
   },
 });

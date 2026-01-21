@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, CardContent } from '../../src/components/ui';
-import { API_CONFIG } from '../../src/config/api.config';
 import {
     BorderRadius,
     BrandColors,
@@ -24,11 +23,9 @@ import {
     Spacing,
 } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { mockAnalyticsService } from '../../src/mocks';
 import { analyticsService } from '../../src/services/analytics.service';
 import { UserAnalytics } from '../../src/types';
 
-const getAnalyticsService = () => API_CONFIG.USE_MOCK ? mockAnalyticsService : analyticsService;
 
 export default function AnalyticsScreen() {
   const { colors } = useTheme();
@@ -40,8 +37,7 @@ export default function AnalyticsScreen() {
 
   const fetchAnalytics = React.useCallback(async () => {
     try {
-      const service = getAnalyticsService();
-      const data = await service.getUserAnalytics();
+      const data = await analyticsService.getUserAnalytics();
       setAnalytics(data);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);

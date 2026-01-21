@@ -14,11 +14,6 @@ if (!process.env.EXPO_PUBLIC_API_URL) {
 export const API_CONFIG = {
   BASE_URL: process.env.EXPO_PUBLIC_API_URL || '',
   TIMEOUT: 30000,
-  /**
-   * Toggle this to use mock data instead of real API calls.
-   * Set to true for development/testing without backend.
-   */
-  USE_MOCK: process.env.EXPO_PUBLIC_USE_MOCK === 'true' || true, // Default to true for development
 } as const;
 
 export default API_CONFIG;
