@@ -27,6 +27,15 @@ export default function ResultScreen() {
         if (!id) return;
         setLoading(true);
         const data = await resultsService.getResult(id as string);
+        
+        if (__DEV__) {
+          console.log('🏁 ResultScreen mapped data:', {
+            title: data.testTitle,
+            score: data.score,
+            sections: data.sectionWise?.length
+          });
+        }
+        
         setResult(data);
       } catch (error) {
         Alert.alert('Error', 'Failed to load results');

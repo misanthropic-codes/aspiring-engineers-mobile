@@ -169,12 +169,15 @@ export default function TestAttemptScreen() {
         });
       }
 
-      const resultId = result.data?.resultId;
-      if (resultId) {
-        router.replace(`/test/result/${resultId}`);
+      const resultData = result.data;
+      const navigationId = resultData?.attemptId || attemptData.attemptId;
+
+      if (navigationId) {
+        console.log('➡️ Navigating to results with ID:', navigationId);
+        router.replace(`/test/result/${navigationId}`);
       } else {
-        console.error('❌ Result ID missing in submit response');
-        Alert.alert('Success', 'Test submitted successfully, but could not load results directly. Please check test history.');
+        console.error('❌ Could not determine navigation ID for results');
+        Alert.alert('Success', 'Test submitted successfully.');
         router.replace('/');
       }
     } catch (error) {

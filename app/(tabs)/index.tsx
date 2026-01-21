@@ -30,12 +30,11 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { PurchasedPackage, purchasesService } from '../../src/services/purchases.service';
 import { testService } from '../../src/services/test.service';
-import { userService } from '../../src/services/user.service';
 import { MyTestsResponse } from '../../src/types';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
 
@@ -54,11 +53,12 @@ export default function DashboardScreen() {
     try {
       setLoading(true);
       
-      // Use userService for detailed profile and stats (same as web)
-      const userData = await userService.getUserProfile();
+      // Use refreshProfile from AuthContext to update global state
+      // This internally calls userService.getUserProfile and updates 'user'
+      await refreshProfile();
       
       if (__DEV__) {
-        console.log('📊 Dashboard usage stats:', userData?.stats);
+        console.log('📊 Dashboard stats refreshed via AuthContext');
       }
 
       // Fetch purchased packages
@@ -76,7 +76,7 @@ export default function DashboardScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [refreshProfile]);
 
   React.useEffect(() => {
     fetchDashboardData();

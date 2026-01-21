@@ -124,12 +124,94 @@ export interface AnswerKeyResponse {
 }
 
 export const resultsService = {
-  // Get result by resultId - returns TestResult for compatibility with mock
-  getResult: async (resultId: string): Promise<TestResult> => {
-    const response = await api.get<TestResult>(
-      `/results/${resultId}`
-    );
-    return response;
+  // Get result by attemptId - maps AttemptResultResponse to flat TestResult type
+  getResult: async (id: string): Promise<TestResult> => {
+    try {
+      // Use /attempts/:id/result (matches web client result page data)
+      const response = await api.get<any>(`/attempts/${id}/result`);
+      const payload = response; // api.get returns response.data
+
+      if (__DEV__) {
+        console.log('🏁 getResult payload:', {
+          success: payload?.success,
+          hasData: !!payload?.data,
+          keys: payload?.data ? Object.keys(payload.data) : []
+        });
+      }
+
+      const raw = payload?.data || payload;
+      if (!raw) throw new Error('Result data missing');
+
+      // Map nested API structure (AttemptResultResponse) to flat UI structure (TestResult)
+      const mappedResult: TestResult = {
+        attemptId: raw.attemptId || id,
+        testId: raw.test?.testId || raw.testId || '',
+        testTitle: raw.test?.title || raw.testTitle || 'Test Result',
+        userId: raw.userId || '',
+        score: raw.score ?? 0,
+        totalMarks: raw.totalMarks ?? 0,
+        percentage: (raw.percentage ?? ((raw.score / raw.totalMarks) * 100)) || 0,
+        rank: raw.rank?.rank ?? raw.rank ?? 0,
+        totalAttempts: raw.rank?.totalParticipants ?? raw.statistics?.totalParticipants ?? 0,
+        percentile: raw.rank?.percentile ?? 0,
+        timeTaken: Math.floor((raw.timeTaken || 0) / 60) || 1, // raw is often in seconds
+        submittedAt: raw.submittedAt || raw.endTime || '',
+        sectionWise: (raw.sectionWiseScore || raw.sectionWise || raw.statistics?.sections || []).map((s: any) => ({
+          sectionId: s.sectionId || s.sectionName || '',
+          sectionName: s.sectionName || 'Section',
+          subject: s.subject || '',
+          score: s.marksObtained ?? s.score ?? 0,
+          totalMarks: s.totalMarks ?? 0,
+          accuracy: s.accuracy ?? 0,
+          correctAnswers: s.correctAnswers ?? s.correct ?? 0,
+          incorrectAnswers: s.incorrectAnswers ?? s.incorrect ?? 0,
+          unattempted: s.unanswered ?? s.unattempted ?? 0,
+        })),
+        subjectWise: (raw.subjectWiseScore || raw.subjectWise || []).map((s: any) => ({
+          subject: s.subject || '',
+          score: s.marksObtained ?? s.score ?? 0,
+          totalMarks: s.totalMarks ?? 0,
+          accuracy: s.accuracy ?? 0,
+          correctAnswers: s.correctAnswers ?? 0,
+          incorrectAnswers: s.incorrectAnswers ?? 0,
+          unattempted: s.unanswered ?? s.unattempted ?? 0,
+          timeTaken: Math.floor((s.timeSpent || 0) / 60),
+        })),
+        difficultyWise: raw.difficultyWiseScore || {
+          easy: { correct: 0, incorrect: 0, unattempted: 0 },
+          medium: { correct: 0, incorrect: 0, unattempted: 0 },
+          hard: { correct: 0, incorrect: 0, unattempted: 0 },
+        },
+        speedAccuracy: {
+          speed: raw.timeAnalysis?.averageTimePerQuestion || 0,
+          accuracy: raw.score?.accuracy || raw.percentage || 0,
+        },
+        comparison: {
+          averageScore: raw.comparison?.averageScore || 0,
+          topperScore: raw.comparison?.highestScore || 0,
+          yourScore: raw.score ?? 0,
+        }
+      };
+
+      if (__DEV__) {
+        console.log('✅ Result mapped successfully:', mappedResult.testTitle);
+      }
+
+      return mappedResult;
+    } catch (error) {
+      console.error('❌ Error in getResult mapping:', error);
+      // If /attempts/:id/result fails, try /results/:id as fallback
+      if (id) {
+         try {
+           const fallback = await api.get<any>(`/results/${id}`);
+           console.log('ℹ️ Used /results/:id fallback');
+           return fallback.data || fallback;
+         } catch (e) {
+           console.error('❌ Fallback also failed');
+         }
+      }
+      throw error;
+    }
   },
 
   // Get attempt result with answers (detailed)

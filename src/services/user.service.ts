@@ -37,28 +37,38 @@ export const userService = {
    */
   getUserProfile: async (): Promise<User> => {
     // Note: 'api.get' returns 'response.data' directly
-    const response = await api.get<UserProfileResponse>('/users/profile');
+    const response = await api.get<any>('/users/profile');
     
     if (__DEV__) {
-      console.log('✅ User profile fetched from /users/profile');
+      console.log('👤 /users/profile full response:', JSON.stringify(response, null, 2));
     }
     
-    const data = response.data;
+    // Some APIs wrap in 'data', some don't
+    const data = response.data || response;
     
-    // Map API response to User type
+    // Map API response to User type with robust stats handling
     const user: User = {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
+      id: data.id || data._id || '',
+      name: data.name || '',
+      email: data.email || data.identifier || '',
+      phone: data.phone || '',
       profilePicture: data.profilePicture,
-      dateOfBirth: data.dateOfBirth,
-      examTargets: data.examTargets as any,
-      targetYear: data.targetYear,
-      stats: data.stats,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
+      dateOfBirth: data.dateOfBirth || '',
+      examTargets: data.examTargets as any || [],
+      targetYear: data.targetYear || 0,
+      stats: {
+        testsAttempted: data.stats?.testsAttempted ?? 0,
+        averageScore: data.stats?.averageScore ?? 0,
+        bestRank: data.stats?.bestRank ?? 0,
+        totalStudyHours: data.stats?.totalStudyHours ?? 0,
+      },
+      createdAt: data.createdAt || '',
+      updatedAt: data.updatedAt || '',
     };
+    
+    if (__DEV__) {
+      console.log('✅ User profile mapped stats:', user.stats);
+    }
     
     return user;
   },
