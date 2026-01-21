@@ -5,6 +5,7 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
     Alert,
@@ -52,27 +53,27 @@ export default function ProfileScreen() {
     {
       icon: 'person-outline',
       label: 'Edit Profile',
-      onPress: () => {},
+      onPress: () => router.push('/profile/edit'),
     },
     {
       icon: 'lock-closed-outline',
       label: 'Change Password',
-      onPress: () => {},
+      onPress: () => router.push('/profile/change-password'),
     },
     {
       icon: 'notifications-outline',
       label: 'Notifications',
-      onPress: () => {},
+      onPress: () => router.push('/profile/notifications'),
     },
     {
       icon: 'help-circle-outline',
       label: 'Help & Support',
-      onPress: () => {},
+      onPress: () => router.push('/profile/support'),
     },
     {
       icon: 'information-circle-outline',
       label: 'About',
-      onPress: () => {},
+      onPress: () => router.push('/profile/about'),
     },
   ];
 

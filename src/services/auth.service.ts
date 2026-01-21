@@ -287,6 +287,23 @@ export const authService = {
       throw new Error(handleApiError(error));
     }
   },
+  /**
+   * Request a password reset link
+   * POST /auth/forgot-password
+   */
+  requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+      }>('/auth/forgot-password', { email });
+      
+      console.log('✅ Password reset request successful');
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  },
 };
 
 export default authService;

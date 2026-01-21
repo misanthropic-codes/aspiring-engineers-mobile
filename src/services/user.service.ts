@@ -109,6 +109,22 @@ export const userService = {
     };
     
     return user;
+  },
+
+  /**
+   * Change user password
+   * POST /users/change-password
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await api.post<any>('/users/change-password', {
+        currentPassword,
+        newPassword,
+      });
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to change password');
+    }
   }
 };
 

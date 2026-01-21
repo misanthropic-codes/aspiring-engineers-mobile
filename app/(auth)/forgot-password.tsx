@@ -25,7 +25,7 @@ import {
     LightColors,
     Spacing,
 } from '../../src/constants/theme';
-import { isValidEmail } from '../../src/utils/validators';
+import authService from '../../src/services/auth.service';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -34,17 +34,15 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleResetRequest = async () => {
-    setError('');
-    setSuccess('');
-
-    if (!isValidEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
+    try {
+      setLoading(true);
+      const response = await authService.requestPasswordReset(email);
+      setSuccess(response.message || 'If an account exists for ' + email + ', you will receive a reset link shortly.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to request reset. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // TODO: Implement real API call when available on backend
-    setSuccess('If an account exists for ' + email + ', you will receive a reset link shortly.');
-    setLoading(false);
   };
 
   return (
