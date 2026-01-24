@@ -28,16 +28,16 @@ export default function StoreScreen() {
     fetchPackages();
   }, []);
 
-  const handleBuyNow = (link: string | undefined) => {
-    if (!link) return;
-    Linking.openURL(link).catch(err => console.error("Couldn't load page", err));
+  const handleBuyNow = (packageId: string) => {
+    const url = `https://www.theaspiringengineers.com/test-series/${packageId}`;
+    Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
   };
 
   const renderStoreItem = (item: Package) => (
     <TouchableOpacity 
       key={item._id} 
       style={styles.card}
-      onPress={() => item.thumbnail && handleBuyNow(item.thumbnail)} // Placeholder for purchase link
+      onPress={() => handleBuyNow(item._id)}
       activeOpacity={0.9}
     >
       {item.thumbnail && <Image source={{ uri: item.thumbnail }} style={styles.cardImage} />}
@@ -55,7 +55,7 @@ export default function StoreScreen() {
            </View>
            <TouchableOpacity 
               style={styles.buyButton}
-              onPress={() => handleBuyNow(item.thumbnail)}
+              onPress={() => handleBuyNow(item._id)}
            >
               <Text style={styles.buyButtonText}>Buy Now</Text>
            </TouchableOpacity>

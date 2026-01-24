@@ -72,7 +72,7 @@ export default function AboutScreen() {
           </View>
         </Card>
 
-        <Text style={styles.footerText}>© 2026 Misanthropic Codes. All rights reserved.</Text>
+        <Text style={styles.footerText}>© 2026 Aspiring Engineers. All rights reserved.</Text>
       </ScrollView>
     </SafeAreaView>
   );

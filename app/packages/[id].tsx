@@ -4,6 +4,7 @@ import React from 'react';
 import {
     ActivityIndicator,
     Image,
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
@@ -110,7 +111,10 @@ export default function PackageDetailScreen() {
               <Text style={styles.purchasedText}>Purchased & Active</Text>
             </View>
           ) : (
-            <TouchableOpacity style={styles.buyButton} onPress={() => router.push('/store')}>
+            <TouchableOpacity 
+              style={styles.buyButton} 
+              onPress={() => Linking.openURL(`https://www.theaspiringengineers.com/test-series/${pkg._id}`)}
+            >
               <Text style={styles.buyButtonText}>
                 Buy Now — ₹{pkg.discountPrice || pkg.price}
               </Text>

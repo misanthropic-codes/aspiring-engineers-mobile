@@ -31,14 +31,14 @@ export default function SupportScreen() {
     {
       icon: 'mail-outline',
       label: 'Email Support',
-      value: 'support@aspiringengineers.in',
-      onPress: () => Linking.openURL('mailto:support@aspiringengineers.in'),
+      value: 'support@theaspiringengineers.com',
+      onPress: () => Linking.openURL('mailto:support@theaspiringengineers.com'),
     },
     {
       icon: 'globe-outline',
       label: 'Visit Website',
-      value: 'www.aspiringengineers.in',
-      onPress: () => Linking.openURL('https://aspiringengineers.in'),
+      value: 'www.theaspiringengineers.com',
+      onPress: () => Linking.openURL('https://www.theaspiringengineers.com'),
     },
   ];
 
