@@ -8,7 +8,15 @@
 import { api } from "./api.client";
 
 // Paper categories
-export type PaperCategory = "jee-main" | "jee-advanced" | "wbjee" | "neet";
+export type PaperCategory =
+  | "jee-main"
+  | "jee-advanced"
+  | "wbjee"
+  | "neet"
+  | "boards-10"
+  | "boards-12"
+  | "sample-10"
+  | "sample-12";
 
 // Paper interface
 export interface Paper {
@@ -44,15 +52,19 @@ export interface CategoryInfo {
 }
 
 export const PAPER_CATEGORIES: CategoryInfo[] = [
-  { id: "jee-main", name: "JEE Main", shortName: "Main", color: "#2596be" },
+  { id: "jee-main", name: "JEE Main", shortName: "JEE Main", color: "#2596be" },
   {
     id: "jee-advanced",
     name: "JEE Advanced",
-    shortName: "Advanced",
+    shortName: "JEE Adv",
     color: "#4EA8DE",
   },
   { id: "neet", name: "NEET", shortName: "NEET", color: "#22C55E" },
   { id: "wbjee", name: "WBJEE", shortName: "WBJEE", color: "#F59E0B" },
+  { id: "boards-10", name: "Class 10 Boards", shortName: "Class 10", color: "#8E44AD" },
+  { id: "boards-12", name: "Class 12 Boards", shortName: "Class 12", color: "#9B59B6" },
+  { id: "sample-10", name: "Class 10 Sample", shortName: "Sample 10", color: "#E67E22" },
+  { id: "sample-12", name: "Class 12 Sample", shortName: "Sample 12", color: "#D35400" },
 ];
 
 export const papersService = {
@@ -61,22 +73,47 @@ export const papersService = {
    * @param category - Optional category filter
    * @returns Array of papers with solutions
    */
-  getPapersWithSolution: async (category?: PaperCategory): Promise<Paper[]> => {
+  /**
+   * Get papers (unified)
+   * @param params - Query parameters
+   * @returns Array of papers
+   */
+  getPapers: async (params: { category?: PaperCategory; solution?: boolean }): Promise<Paper[]> => {
     try {
-      const response = await api.get<PapersResponse>("/papers/with-solution");
-      let papers = response.data || [];
-
-      // Filter by category if provided
-      if (category) {
-        papers = papers.filter((paper) => paper.category === category);
+      // Build query params
+      const queryParams = new URLSearchParams();
+      if (params.category) queryParams.append("category", params.category);
+      
+      const response = await api.get<PapersResponse | Paper[]>(`/papers?${queryParams.toString()}`);
+      
+      let papers: Paper[] = [];
+      
+      if (Array.isArray(response)) {
+        papers = response;
+      } else if (response && 'data' in response) {
+        // It's PapersResponse
+        papers = response.data || [];
       }
 
-      // Sort by display order
-      return papers.sort((a, b) => a.displayOrder - b.displayOrder);
+      // Filter for solutions if specifically requested by the method wrapper
+      if (params.solution === true) {
+         papers = papers.filter((p: Paper) => p.solutionDriveLink || p.videoSolutionLink);
+      }
+
+      return papers.sort((a: Paper, b: Paper) => a.displayOrder - b.displayOrder);
     } catch (error) {
-      console.error("Error fetching papers with solution:", error);
+      console.error("Error fetching papers:", error);
       return [];
     }
+  },
+
+  /**
+   * Get papers with solutions
+   * @param category - Optional category filter
+   * @returns Array of papers with solutions
+   */
+  getPapersWithSolution: async (category?: PaperCategory): Promise<Paper[]> => {
+    return papersService.getPapers({ category, solution: true });
   },
 
   /**
@@ -85,21 +122,10 @@ export const papersService = {
    * @returns Array of papers without solutions
    */
   getPapersNoSolution: async (category?: PaperCategory): Promise<Paper[]> => {
-    try {
-      const response = await api.get<PapersResponse>("/papers/no-solution");
-      let papers = response.data || [];
-
-      // Filter by category if provided
-      if (category) {
-        papers = papers.filter((paper) => paper.category === category);
-      }
-
-      // Sort by display order
-      return papers.sort((a, b) => a.displayOrder - b.displayOrder);
-    } catch (error) {
-      console.error("Error fetching papers without solution:", error);
-      return [];
-    }
+     // For "no solution" / practice, we might just return all papers for the category
+     // allowing the user to practice them. Or strictly those without solutions.
+     // In the web app, we mapped everything to `getPapers`.
+     return papersService.getPapers({ category });
   },
 
   /**
