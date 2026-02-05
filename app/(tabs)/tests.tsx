@@ -40,9 +40,10 @@ export default function TestsScreen() {
   const fetchTests = React.useCallback(async () => {
     try {
       const data = await testService.getAllTests();
-      setTests(data.tests);
+      setTests(data?.tests || []);
     } catch (error) {
       console.error('Failed to fetch tests:', error);
+      setTests([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

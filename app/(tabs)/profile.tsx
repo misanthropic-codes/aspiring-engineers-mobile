@@ -51,6 +51,11 @@ export default function ProfileScreen() {
 
   const menuItems = [
     {
+      icon: 'chatbubbles-outline',
+      label: 'Counselling',
+      onPress: () => router.push('/counselling' as any),
+    },
+    {
       icon: 'person-outline',
       label: 'Edit Profile',
       onPress: () => router.push('/profile/edit'),

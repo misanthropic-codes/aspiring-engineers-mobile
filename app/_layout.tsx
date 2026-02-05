@@ -30,6 +30,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="pyq" options={{ headerShown: true }} />
+        <Stack.Screen name="counselling" options={{ headerShown: false }} />
       </Stack>
     </>
   );
