@@ -56,6 +56,29 @@ export default function AnalyticsScreen() {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
+  const getStrengthColor = (strength: string) => {
+    switch (strength) {
+      case 'strong':
+        return colors.success;
+      case 'moderate':
+        return '#F59E0B';
+      case 'weak':
+        return colors.error;
+      default:
+        return colors.textMuted;
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins < 60) return `${mins}m ${secs}s`;
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    return `${hours}h ${remainingMins}m`;
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -76,80 +99,323 @@ export default function AnalyticsScreen() {
         {analytics ? (
           <>
             {/* Overview Cards */}
-            <View style={styles.statsRow}>
-              <Card style={styles.statCard} variant="elevated">
-                <View style={styles.statContent}>
-                  <Text style={styles.statValue}>{analytics.totalTests}</Text>
-                  <Text style={styles.statLabel}>Tests Taken</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: `${BrandColors.primary}20` }]}>
+                  <Ionicons name="document-text-outline" size={20} color={BrandColors.primary} />
                 </View>
-              </Card>
-              <Card style={styles.statCard} variant="elevated">
-                <View style={styles.statContent}>
-                  <Text style={styles.statValue}>{analytics.averageScore.toFixed(1)}</Text>
-                  <Text style={styles.statLabel}>Avg Score</Text>
+                <Text style={styles.statValue}>{analytics.overview.testsAttempted}</Text>
+                <Text style={styles.statLabel}>Tests Taken</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: `${colors.success}20` }]}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
                 </View>
-              </Card>
-              <Card style={styles.statCard} variant="elevated">
-                <View style={styles.statContent}>
-                  <Text style={styles.statValue}>{analytics.averagePercentile.toFixed(1)}</Text>
-                  <Text style={styles.statLabel}>Avg %ile</Text>
+                <Text style={styles.statValue}>{analytics.overview.overallAccuracy.toFixed(1)}%</Text>
+                <Text style={styles.statLabel}>Accuracy</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: `${BrandColors.primary}20` }]}>
+                  <Ionicons name="trophy-outline" size={20} color={BrandColors.primary} />
                 </View>
-              </Card>
+                <Text style={styles.statValue}>{analytics.overview.bestScore.toFixed(1)}</Text>
+                <Text style={styles.statLabel}>Best Score</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconWrap, { backgroundColor: `${colors.warning}20` }]}>
+                  <Ionicons name="time-outline" size={20} color={colors.warning || '#F59E0B'} />
+                </View>
+                <Text style={styles.statValue}>{analytics.overview.totalStudyTime}</Text>
+                <Text style={styles.statLabel}>Study Time</Text>
+              </View>
             </View>
 
-            {/* Subject Performance */}
+            {/* Questions Overview */}
             <Card style={styles.section}>
               <CardContent>
-                <Text style={styles.sectionTitle}>Subject Performance</Text>
-                {analytics.subjectWise.map((subject) => (
-                  <View key={subject.subject} style={styles.subjectRow}>
-                    <View style={styles.subjectInfo}>
-                      <Text style={styles.subjectName}>{subject.subject}</Text>
-                      <Text style={styles.subjectScore}>Avg: {subject.averageScore.toFixed(1)}</Text>
-                    </View>
-                    <View style={styles.progressBarBg}>
-                      <View 
-                        style={[
-                          styles.progressBarFill, 
-                          { width: `${Math.min(subject.accuracy, 100)}%` }
-                        ]} 
-                      />
-                    </View>
-                    <Text style={styles.accuracyText}>{subject.accuracy.toFixed(1)}% Acc</Text>
+                <Text style={styles.sectionTitle}>Questions Overview</Text>
+                <View style={styles.questionsRow}>
+                  <View style={styles.questionsStat}>
+                    <Text style={[styles.questionsValue, { color: colors.textPrimary }]}>
+                      {analytics.overview.totalQuestionsAttempted}
+                    </Text>
+                    <Text style={styles.questionsLabel}>Attempted</Text>
                   </View>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Weaknesses */}
-            <Card style={styles.section}>
-              <CardContent>
-                <Text style={styles.sectionTitle}>Areas for Improvement</Text>
-                <View style={styles.tagsContainer}>
-                  {analytics.weaknesses.map((weakness, index) => (
-                    <View key={index} style={styles.tag}>
-                       <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
-                      <Text style={styles.tagText}>{weakness}</Text>
-                    </View>
-                  ))}
+                  <View style={styles.questionsStat}>
+                    <Text style={[styles.questionsValue, { color: colors.success }]}>
+                      {analytics.overview.totalCorrectAnswers}
+                    </Text>
+                    <Text style={styles.questionsLabel}>Correct</Text>
+                  </View>
+                  <View style={styles.questionsStat}>
+                    <Text style={[styles.questionsValue, { color: colors.error }]}>
+                      {analytics.overview.totalIncorrectAnswers}
+                    </Text>
+                    <Text style={styles.questionsLabel}>Incorrect</Text>
+                  </View>
+                  <View style={styles.questionsStat}>
+                    <Text style={[styles.questionsValue, { color: colors.textMuted }]}>
+                      {analytics.overview.totalUnattempted}
+                    </Text>
+                    <Text style={styles.questionsLabel}>Skipped</Text>
+                  </View>
                 </View>
               </CardContent>
             </Card>
 
-            {/* Strengths */}
-            <Card style={styles.section}>
-              <CardContent>
-                <Text style={styles.sectionTitle}>Strong Areas</Text>
-                <View style={styles.tagsContainer}>
-                  {analytics.strengths.map((strength, index) => (
-                    <View key={index} style={[styles.tag, styles.strengthTag]}>
-                       <Ionicons name="ribbon-outline" size={16} color={colors.success} />
-                      <Text style={[styles.tagText, styles.strengthText]}>{strength}</Text>
+            {/* Subject Performance */}
+            {analytics.subjectAnalytics.length > 0 && (
+              <Card style={styles.section}>
+                <CardContent>
+                  <Text style={styles.sectionTitle}>Subject Performance</Text>
+                  {analytics.subjectAnalytics.map((subject) => (
+                    <View key={subject.subject} style={styles.subjectRow}>
+                      <View style={styles.subjectHeader}>
+                        <View style={styles.subjectInfo}>
+                          <Text style={styles.subjectName}>{subject.subject}</Text>
+                          <View style={[styles.strengthBadge, { backgroundColor: `${getStrengthColor(subject.strength)}20` }]}>
+                            <Text style={[styles.strengthText, { color: getStrengthColor(subject.strength) }]}>
+                              {subject.strength}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.subjectAccuracy}>{subject.accuracy.toFixed(1)}%</Text>
+                      </View>
+                      <View style={styles.progressBarBg}>
+                        <View 
+                          style={[
+                            styles.progressBarFill, 
+                            { 
+                              width: `${Math.max(0, Math.min(subject.accuracy, 100))}%`,
+                              backgroundColor: getStrengthColor(subject.strength)
+                            }
+                          ]} 
+                        />
+                      </View>
+                      <View style={styles.subjectMeta}>
+                        <Text style={styles.metaText}>
+                          {subject.correctAnswers}/{subject.questionsAttempted} correct
+                        </Text>
+                        <Text style={styles.metaText}>
+                          Avg: {subject.avgTimePerQuestion}s/q
+                        </Text>
+                      </View>
                     </View>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Topic Analytics */}
+            {analytics.topicAnalytics.length > 0 && (
+              <Card style={styles.section}>
+                <CardContent>
+                  <Text style={styles.sectionTitle}>Topic Performance</Text>
+                  {analytics.topicAnalytics.map((topic, index) => (
+                    <View key={`${topic.topic}-${index}`} style={styles.topicRow}>
+                      <View style={styles.topicInfo}>
+                        <Text style={styles.topicName}>{topic.topic}</Text>
+                        <Text style={styles.topicSubject}>{topic.subject}</Text>
+                      </View>
+                      <View style={styles.topicStats}>
+                        <Text style={[styles.topicAccuracy, { color: getStrengthColor(topic.strength) }]}>
+                          {topic.accuracy.toFixed(1)}%
+                        </Text>
+                        <Text style={styles.topicQuestions}>
+                          {topic.correctAnswers}/{topic.questionsAttempted}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Difficulty Analytics */}
+            <Card style={styles.section}>
+              <CardContent>
+                <Text style={styles.sectionTitle}>Difficulty Breakdown</Text>
+                <View style={styles.difficultyContainer}>
+                  {(['easy', 'medium', 'hard'] as const).map((level) => {
+                    const data = analytics.difficultyAnalytics[level];
+                    const levelColors = {
+                      easy: colors.success,
+                      medium: '#F59E0B',
+                      hard: colors.error
+                    };
+                    return (
+                      <View key={level} style={styles.difficultyCard}>
+                        <Text style={[styles.difficultyLabel, { color: levelColors[level] }]}>
+                          {level.charAt(0).toUpperCase() + level.slice(1)}
+                        </Text>
+                        <Text style={styles.difficultyAccuracy}>{data.accuracy.toFixed(1)}%</Text>
+                        <Text style={styles.difficultyMeta}>
+                          {data.correct}/{data.attempted}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               </CardContent>
             </Card>
+
+            {/* Time Analytics */}
+            <Card style={styles.section}>
+              <CardContent>
+                <Text style={styles.sectionTitle}>Time Analytics</Text>
+                <View style={styles.timeGrid}>
+                  <View style={styles.timeStat}>
+                    <Text style={styles.timeValue}>{analytics.timeAnalytics.totalTimeFormatted}</Text>
+                    <Text style={styles.timeLabel}>Total Time</Text>
+                  </View>
+                  <View style={styles.timeStat}>
+                    <Text style={styles.timeValue}>{formatTime(analytics.timeAnalytics.avgTimePerTest)}</Text>
+                    <Text style={styles.timeLabel}>Avg/Test</Text>
+                  </View>
+                  <View style={styles.timeStat}>
+                    <Text style={styles.timeValue}>{analytics.timeAnalytics.avgTimePerQuestion}s</Text>
+                    <Text style={styles.timeLabel}>Avg/Question</Text>
+                  </View>
+                  <View style={styles.timeStat}>
+                    <Text style={styles.timeValue}>{analytics.timeAnalytics.questionsPerMinute.toFixed(2)}</Text>
+                    <Text style={styles.timeLabel}>Q/min</Text>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+
+            {/* Trend Indicator */}
+            <Card style={styles.section}>
+              <CardContent>
+                <View style={styles.trendHeader}>
+                  <Text style={styles.sectionTitle}>Performance Trend</Text>
+                  <View style={[
+                    styles.trendBadge,
+                    { 
+                      backgroundColor: analytics.trends.trend === 'improving' 
+                        ? `${colors.success}20` 
+                        : analytics.trends.trend === 'declining'
+                        ? `${colors.error}20`
+                        : `${colors.textMuted}20`
+                    }
+                  ]}>
+                    <Ionicons 
+                      name={
+                        analytics.trends.trend === 'improving' 
+                          ? 'trending-up' 
+                          : analytics.trends.trend === 'declining'
+                          ? 'trending-down'
+                          : 'remove'
+                      }
+                      size={16}
+                      color={
+                        analytics.trends.trend === 'improving' 
+                          ? colors.success 
+                          : analytics.trends.trend === 'declining'
+                          ? colors.error
+                          : colors.textMuted
+                      }
+                    />
+                    <Text style={[
+                      styles.trendText,
+                      { 
+                        color: analytics.trends.trend === 'improving' 
+                          ? colors.success 
+                          : analytics.trends.trend === 'declining'
+                          ? colors.error
+                          : colors.textMuted
+                      }
+                    ]}>
+                      {analytics.trends.trend.charAt(0).toUpperCase() + analytics.trends.trend.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.improvementText}>
+                  Improvement: {analytics.trends.improvement}
+                </Text>
+              </CardContent>
+            </Card>
+
+            {/* Recent Performance */}
+            {analytics.recentPerformance.length > 0 && (
+              <Card style={styles.section}>
+                <CardContent>
+                  <Text style={styles.sectionTitle}>Recent Tests</Text>
+                  {analytics.recentPerformance.slice(0, 5).map((test, index) => (
+                    <View key={`${test.testId}-${index}`} style={styles.recentTestRow}>
+                      <View style={styles.recentTestInfo}>
+                        <Text style={styles.recentTestTitle} numberOfLines={1}>
+                          {test.title}
+                        </Text>
+                        <Text style={styles.recentTestDate}>
+                          {new Date(test.date).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <View style={styles.recentTestScore}>
+                        <Text style={[
+                          styles.recentTestScoreValue,
+                          { color: test.score >= 0 ? colors.success : colors.error }
+                        ]}>
+                          {test.score}
+                        </Text>
+                        <Text style={styles.recentTestTime}>
+                          {formatTime(test.timeTaken)}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recommendations */}
+            {analytics.strengthsAndWeaknesses.recommendations.length > 0 && (
+              <Card style={styles.section}>
+                <CardContent>
+                  <Text style={styles.sectionTitle}>Recommendations</Text>
+                  {analytics.strengthsAndWeaknesses.recommendations.map((rec, index) => (
+                    <View key={index} style={styles.recommendationRow}>
+                      <Ionicons name="bulb-outline" size={18} color={BrandColors.primary} />
+                      <Text style={styles.recommendationText}>{rec}</Text>
+                    </View>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Strengths & Weaknesses */}
+            <View style={styles.strengthWeaknessContainer}>
+              {analytics.strengthsAndWeaknesses.strongestTopics.length > 0 && (
+                <Card style={[styles.section, { flex: 1 }]}>
+                  <CardContent>
+                    <View style={styles.swHeader}>
+                      <Ionicons name="ribbon-outline" size={18} color={colors.success} />
+                      <Text style={styles.swTitle}>Strengths</Text>
+                    </View>
+                    {analytics.strengthsAndWeaknesses.strongestTopics.map((topic, index) => (
+                      <View key={index} style={[styles.swTag, { backgroundColor: `${colors.success}15` }]}>
+                        <Text style={[styles.swTagText, { color: colors.success }]}>{topic}</Text>
+                      </View>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+              {analytics.strengthsAndWeaknesses.weakestTopics.length > 0 && (
+                <Card style={[styles.section, { flex: 1 }]}>
+                  <CardContent>
+                    <View style={styles.swHeader}>
+                      <Ionicons name="alert-circle-outline" size={18} color={colors.error} />
+                      <Text style={styles.swTitle}>Focus Areas</Text>
+                    </View>
+                    {analytics.strengthsAndWeaknesses.weakestTopics.slice(0, 3).map((topic, index) => (
+                      <View key={index} style={[styles.swTag, { backgroundColor: `${colors.error}15` }]}>
+                        <Text style={[styles.swTagText, { color: colors.error }]}>{topic}</Text>
+                      </View>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </View>
           </>
         ) : (
           <Card>
@@ -208,19 +474,29 @@ const getStyles = (colors: ColorScheme) => StyleSheet.create({
     marginTop: Spacing.xs,
     textAlign: 'center',
   },
-  statsRow: {
+  statsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.sm,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   statCard: {
     flex: 1,
-    padding: Spacing.sm,
+    minWidth: '45%',
     backgroundColor: colors.card,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
     borderColor: colors.border,
-  },
-  statContent: {
+    padding: Spacing.md,
     alignItems: 'center',
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
   },
   statValue: {
     fontSize: FontSizes.xl,
@@ -243,22 +519,58 @@ const getStyles = (colors: ColorScheme) => StyleSheet.create({
     marginBottom: Spacing.md,
     color: colors.textPrimary,
   },
+  questionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  questionsStat: {
+    alignItems: 'center',
+  },
+  questionsValue: {
+    fontSize: FontSizes.xl,
+    fontWeight: 'bold',
+  },
+  questionsLabel: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   subjectRow: {
     marginBottom: Spacing.md,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  subjectHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
   },
   subjectInfo: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
   subjectName: {
-    fontSize: FontSizes.sm,
-    fontWeight: '500',
+    fontSize: FontSizes.md,
+    fontWeight: '600',
     color: colors.textPrimary,
   },
-  subjectScore: {
+  strengthBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  strengthText: {
     fontSize: FontSizes.xs,
-    color: colors.textMuted,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  subjectAccuracy: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   progressBarBg: {
     height: 8,
@@ -268,37 +580,182 @@ const getStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: BrandColors.primary,
     borderRadius: BorderRadius.full,
   },
-  accuracyText: {
+  subjectMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: Spacing.xs,
+  },
+  metaText: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  topicRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  topicInfo: {
+    flex: 1,
+  },
+  topicName: {
+    fontSize: FontSizes.sm,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  topicSubject: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  topicStats: {
+    alignItems: 'flex-end',
+  },
+  topicAccuracy: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+  },
+  topicQuestions: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  difficultyContainer: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  difficultyCard: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    alignItems: 'center',
+  },
+  difficultyLabel: {
+    fontSize: FontSizes.sm,
+    fontWeight: '600',
+    marginBottom: Spacing.xs,
+  },
+  difficultyAccuracy: {
+    fontSize: FontSizes.lg,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  difficultyMeta: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+  },
+  timeStat: {
+    flex: 1,
+    minWidth: '40%',
+    alignItems: 'center',
+  },
+  timeValue: {
+    fontSize: FontSizes.lg,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  timeLabel: {
     fontSize: FontSizes.xs,
     color: colors.textMuted,
     marginTop: 2,
-    alignSelf: 'flex-end',
   },
-  tagsContainer: {
+  trendHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  tag: {
+  trendBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.error}15`,
+    gap: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
-    gap: 4,
   },
-  tagText: {
+  trendText: {
     fontSize: FontSizes.sm,
-    color: colors.error,
+    fontWeight: '500',
   },
-  strengthTag: {
-    backgroundColor: `${colors.success}15`,
+  improvementText: {
+    fontSize: FontSizes.sm,
+    color: colors.textMuted,
+    marginTop: Spacing.sm,
   },
-  strengthText: {
-    color: colors.success,
+  recentTestRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  recentTestInfo: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  recentTestTitle: {
+    fontSize: FontSizes.sm,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  recentTestDate: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  recentTestScore: {
+    alignItems: 'flex-end',
+  },
+  recentTestScoreValue: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+  },
+  recentTestTime: {
+    fontSize: FontSizes.xs,
+    color: colors.textMuted,
+  },
+  recommendationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  recommendationText: {
+    flex: 1,
+    fontSize: FontSizes.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  strengthWeaknessContainer: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  swHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  swTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  swTag: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xs,
+  },
+  swTagText: {
+    fontSize: FontSizes.xs,
+    fontWeight: '500',
   },
 });
