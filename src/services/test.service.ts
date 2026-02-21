@@ -6,9 +6,9 @@
  */
 
 import {
-  MyTestsResponse,
-  Test,
-  TestFilters,
+    MyTestsResponse,
+    Test,
+    TestFilters,
 } from '../types';
 import { api } from './api.client';
 
@@ -35,6 +35,67 @@ export interface QuestionData {
   isAnswered: boolean;
   timeSpent?: number;
   language?: string;
+}
+
+/**
+ * Normalize a question object from the API into the shape expected by the mobile UI.
+ * Handles { text: string }[] options, _id/id/questionId normalization, and questionType mapping.
+ */
+const QUESTION_TYPE_MAP: Record<string, 'MCQ_SINGLE' | 'MCQ_MULTI' | 'NUMERICAL' | 'INTEGER'> = {
+  'single-correct': 'MCQ_SINGLE',
+  'multiple-correct': 'MCQ_MULTI',
+  'numerical': 'NUMERICAL',
+  'integer': 'INTEGER',
+};
+
+export function normalizeQuestionFromAPI(raw: any): QuestionData {
+  const id = raw.id || raw.questionId || raw._id || '';
+
+  let type = raw.type as QuestionData['type'];
+  if (!type && raw.questionType) {
+    type = QUESTION_TYPE_MAP[raw.questionType] || 'MCQ_SINGLE';
+  }
+
+  let options: string[] | undefined = undefined;
+  if (Array.isArray(raw.options)) {
+    options = raw.options.map((opt: any) => {
+      if (typeof opt === 'string') return opt;
+      if (opt && typeof opt === 'object' && typeof opt.text === 'string') return opt.text;
+      return String(opt);
+    });
+  }
+
+  const questionImage = raw.questionImage || raw.questionImageUrl || raw.questionImageBase64 || undefined;
+
+  return {
+    id,
+    questionId: id,
+    questionNumber: raw.questionNumber ?? 0,
+    questionText: raw.questionText || '',
+    type,
+    questionType: raw.questionType,
+    images: raw.images,
+    options,
+    questionImage,
+    questionImageUrl: questionImage,
+    marks: raw.marks ?? 0,
+    negativeMarks: raw.negativeMarks ?? 0,
+    savedAnswer: raw.savedAnswer ?? null,
+    isMarkedForReview: raw.isMarkedForReview ?? false,
+    isAnswered: raw.isAnswered ?? false,
+    timeSpent: raw.timeSpent ?? 0,
+    language: raw.language,
+  };
+}
+
+function normalizeSections(sections: any[]): SectionData[] {
+  if (!Array.isArray(sections)) return [];
+  return sections.map((section: any) => ({
+    ...section,
+    questions: Array.isArray(section.questions)
+      ? section.questions.map(normalizeQuestionFromAPI)
+      : [],
+  }));
 }
 
 // Section with questions
@@ -164,6 +225,10 @@ export const testService = {
    */
   startTest: async (testId: string): Promise<StartTestResponse> => {
     const response = await api.post<StartTestResponse>(`/tests/${testId}/start`);
+    // Normalize questions inside sections
+    if (response?.data?.sections) {
+      response.data.sections = normalizeSections(response.data.sections);
+    }
     return response;
   },
 
@@ -217,7 +282,12 @@ export const testService = {
       ? `/attempts/${attemptId}/questions?sectionId=${sectionId}`
       : `/attempts/${attemptId}/questions`;
     const response = await api.get(url);
-    return response as any;
+    // Normalize questions inside sections
+    const result = response as any;
+    if (result?.data?.sections) {
+      result.data.sections = normalizeSections(result.data.sections);
+    }
+    return result;
   },
 
   /**
@@ -226,6 +296,10 @@ export const testService = {
    */
   resumeAttempt: async (attemptId: string): Promise<StartTestResponse> => {
     const response = await api.get<StartTestResponse>(`/attempts/${attemptId}/resume`);
+    // Normalize questions inside sections
+    if (response?.data?.sections) {
+      response.data.sections = normalizeSections(response.data.sections);
+    }
     return response;
   },
 };

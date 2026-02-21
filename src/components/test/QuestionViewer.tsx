@@ -3,6 +3,7 @@ import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../constants/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Answer, Question, QuestionType } from '../../types';
+import { HtmlText } from '../common/HtmlText';
 
 interface QuestionViewerProps {
   question: Question;
@@ -104,12 +105,10 @@ export const QuestionViewer = ({
                  <Text style={styles.optionLabel}>{optionLetter}</Text>
              )}
           </View>
-          <Text style={[
+          <HtmlText html={optionText} style={[
               styles.optionText,
               isSelected && styles.optionTextSelected
-          ]}>
-            {optionText}
-          </Text>
+          ]} baseSize={FontSizes.sm} />
         </TouchableOpacity>
       );
     });
@@ -148,7 +147,7 @@ export const QuestionViewer = ({
         </View>
       </View>
 
-      <Text style={styles.questionText}>{question.questionText}</Text>
+      <HtmlText html={question.questionText} style={styles.questionText} baseSize={FontSizes.base} />
       
       {/* Question Image */}
       {(question as any).questionImage || (question as any).questionImageUrl ? (
