@@ -287,6 +287,44 @@ export interface TestResult {
   comparison: Comparison;
 }
 
+export interface AnswerKeyOption {
+  id?: string;
+  text: string;
+  isCorrect: boolean;
+  imageUrl?: string;
+}
+
+export interface AnswerKeyQuestion {
+  questionId: string;
+  questionNumber: number;
+  questionText: string;
+  type: string;
+  options: AnswerKeyOption[];
+  questionImageUrl?: string;
+  correctAnswer: {
+    selectedOptions?: string[];
+    numericalAnswer?: number | null;
+  } | null;
+  yourAnswer: {
+    selectedOptions?: string[];
+    numericalAnswer?: number | null;
+  } | null;
+  isCorrect: boolean;
+  marks: number;
+  marksObtained: number;
+  difficulty: string;
+  solutionText?: string;
+  solutionImageUrl?: string;
+  timeSpent: number;
+  tags?: string[];
+}
+
+export interface AnswerKeySection {
+  sectionId: string;
+  sectionName: string;
+  questions: AnswerKeyQuestion[];
+}
+
 export interface SectionResult {
   sectionId: string;
   sectionName: string;
@@ -317,12 +355,12 @@ export interface DifficultyResult {
 }
 
 export interface SpeedAccuracy {
-  speed: number; // questions per minute
-  accuracy: number; // percentage
+  speed: string | number; // questions per minute
+  accuracy: string | number; // percentage
 }
 
 export interface Comparison {
-  averageScore: number;
+  averageScore: string | number;
   topperScore: number;
   yourScore: number;
 }

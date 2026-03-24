@@ -21,17 +21,21 @@ import { Button, Input } from '../../src/components/ui';
 import {
     BorderRadius,
     BrandColors,
+    ColorScheme,
     FontSizes,
-    LightColors,
     Spacing,
 } from '../../src/constants/theme';
+import { useTheme } from '../../src/contexts/ThemeContext';
 import authService from '../../src/services/auth.service';
 
 export default function ForgotPasswordScreen() {
+  const { colors, isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const styles = getStyles(colors, isDark);
 
   const handleResetRequest = async () => {
     try {
@@ -65,7 +69,7 @@ export default function ForgotPasswordScreen() {
               <Ionicons
                 name="arrow-back"
                 size={24}
-                color={LightColors.textPrimary}
+                color={colors.textPrimary}
               />
             </TouchableOpacity>
 
@@ -86,7 +90,7 @@ export default function ForgotPasswordScreen() {
           {/* Error Message */}
           {error ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color={LightColors.error} />
+              <Ionicons name="alert-circle" size={20} color={colors.error} />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
@@ -94,7 +98,7 @@ export default function ForgotPasswordScreen() {
           {/* Success Message */}
           {success ? (
             <View style={styles.successContainer}>
-              <Ionicons name="checkmark-circle" size={20} color={LightColors.success} />
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
               <Text style={styles.successText}>{success}</Text>
             </View>
           ) : null}
@@ -113,7 +117,7 @@ export default function ForgotPasswordScreen() {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={LightColors.textMuted}
+                  color={colors.textMuted}
                 />
               }
             />
@@ -143,10 +147,10 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -174,26 +178,26 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSizes['2xl'],
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: Spacing.xs,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: FontSizes.sm,
-    color: LightColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LightColors.errorLight,
+    backgroundColor: colors.errorLight,
     borderRadius: BorderRadius.md,
     padding: Spacing.sm,
     marginBottom: Spacing.md,
   },
   errorText: {
-    color: LightColors.error,
+    color: colors.error,
     fontSize: FontSizes.sm,
     marginLeft: Spacing.xs,
     flex: 1,
@@ -201,13 +205,13 @@ const styles = StyleSheet.create({
   successContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${LightColors.success}15`,
+    backgroundColor: colors.successLight,
     borderRadius: BorderRadius.md,
     padding: Spacing.sm,
     marginBottom: Spacing.md,
   },
   successText: {
-    color: LightColors.success,
+    color: colors.success,
     fontSize: FontSizes.sm,
     marginLeft: Spacing.xs,
     flex: 1,

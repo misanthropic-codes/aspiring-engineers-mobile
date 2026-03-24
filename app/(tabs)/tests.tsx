@@ -12,6 +12,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,22 +26,42 @@ import {
 } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { testService } from '../../src/services/test.service';
-import { Test } from '../../src/types';
+import { MyTest, TestCategory, MyTestsStats } from '../../src/types';
+
+
+import { useAuth } from '../../src/contexts/AuthContext';
 
 
 export default function TestsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const styles = useMemo(() => getStyles(colors), [colors]);
 
   const [refreshing, setRefreshing] = React.useState(false);
-  const [tests, setTests] = React.useState<Test[]>([]);
+  const [tests, setTests] = React.useState<MyTest[]>([]);
+  const [categories, setCategories] = React.useState<TestCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('ALL');
+  const [stats, setStats] = React.useState<MyTestsStats | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   const fetchTests = React.useCallback(async () => {
     try {
-      const data = await testService.getAllTests();
-      setTests(data?.tests || []);
+      if (authLoading) return;
+      if (!isAuthenticated) return;
+      
+      const response = await testService.getMyTests();
+      if (response && response.categories) {
+        setStats(response.stats);
+        setCategories(response.categories);
+        
+        // Flatten all tests from categories
+        const allTests = response.categories.flatMap(cat => cat.tests);
+        setTests(allTests);
+      } else {
+        setTests([]);
+        setCategories([]);
+      }
     } catch (error) {
       console.error('Failed to fetch tests:', error);
       setTests([]);
@@ -48,7 +69,7 @@ export default function TestsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   React.useEffect(() => {
     fetchTests();
@@ -58,6 +79,11 @@ export default function TestsScreen() {
     setRefreshing(true);
     fetchTests();
   }, [fetchTests]);
+
+  const filteredTests = useMemo(() => {
+    if (selectedCategory === 'ALL') return tests;
+    return tests.filter(t => t.category === selectedCategory);
+  }, [tests, selectedCategory]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -76,11 +102,69 @@ export default function TestsScreen() {
           />
         }
       >
+        {stats && (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.totalTests}</Text>
+              <Text style={styles.statLabel}>Total</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.completedTests}</Text>
+              <Text style={styles.statLabel}>Done</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.notStarted}</Text>
+              <Text style={styles.statLabel}>New</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{(stats.overallAverage ?? 0).toFixed(0)}%</Text>
+              <Text style={styles.statLabel}>Avg</Text>
+            </View>
+          </View>
+        )}
+
+        {categories.length > 0 && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.categoriesScroll}
+            contentContainerStyle={styles.categoriesContent}
+          >
+            <TouchableOpacity 
+              onPress={() => setSelectedCategory('ALL')}
+              style={[
+                styles.categoryTab, 
+                selectedCategory === 'ALL' && styles.categoryTabActive
+              ]}
+            >
+              <Text style={[
+                styles.categoryTabText, 
+                selectedCategory === 'ALL' && styles.categoryTabTextActive
+              ]}>All</Text>
+            </TouchableOpacity>
+            {categories.map(cat => (
+              <TouchableOpacity 
+                key={cat.category}
+                onPress={() => setSelectedCategory(cat.category)}
+                style={[
+                  styles.categoryTab, 
+                  selectedCategory === cat.category && styles.categoryTabActive
+                ]}
+              >
+                <Text style={[
+                  styles.categoryTabText, 
+                  selectedCategory === cat.category && styles.categoryTabTextActive
+                ]}>{cat.category}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         {loading && tests.length === 0 ? (
           <Text style={styles.loadingText}>Loading tests...</Text>
-        ) : tests.length > 0 ? (
-          tests.map((test) => (
-            <Card key={test.id} style={styles.testCard}>
+        ) : filteredTests.length > 0 ? (
+          filteredTests.map((test) => (
+            <Card key={test.testId} style={styles.testCard}>
               <CardContent>
                 <View style={styles.testHeader}>
                   <View style={styles.testIcon}>
@@ -88,8 +172,21 @@ export default function TestsScreen() {
                   </View>
                   <View style={styles.testInfo}>
                     <Text style={styles.testTitle}>{test.title}</Text>
-                    <Text style={styles.testExamType}>{test.examType} • {test.difficulty}</Text>
+                    <Text style={styles.testExamType}>{test.category} • {test.type}</Text>
                   </View>
+                  {test.progress && (
+                    <View style={[
+                      styles.statusBadge, 
+                      { backgroundColor: test.progress === 'completed' ? `${colors.success}15` : test.progress === 'in-progress' ? `${colors.warning}15` : `${colors.textMuted}10` }
+                    ]}>
+                      <Text style={[
+                        styles.statusText, 
+                        { color: test.progress === 'completed' ? colors.success : test.progress === 'in-progress' ? colors.warning : colors.textMuted }
+                      ]}>
+                        {test.progress === 'completed' ? 'Completed' : test.progress === 'in-progress' ? 'In Progress' : 'Not Started'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 
                 <Text style={styles.testDescription} numberOfLines={2}>
@@ -102,21 +199,25 @@ export default function TestsScreen() {
                     <Text style={styles.metaText}>{test.duration} mins</Text>
                   </View>
                   <View style={styles.metaItem}>
-                    <Ionicons name="help-circle-outline" size={16} color={colors.textMuted} />
-                    <Text style={styles.metaText}>{test.totalQuestions} Questions</Text>
-                  </View>
-                  <View style={styles.metaItem}>
                     <Ionicons name="ribbon-outline" size={16} color={colors.textMuted} />
                     <Text style={styles.metaText}>{test.totalMarks} Marks</Text>
                   </View>
+                  {test.bestPercentage !== undefined && test.hasAttempted && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="star-outline" size={16} color={colors.success} />
+                      <Text style={[styles.metaText, { color: colors.success, fontWeight: 'bold' }]}>
+                        {test.bestPercentage.toFixed(1)}%
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 <Button
-                  onPress={() => router.push(`/test/attempt/${test.id}`)}
+                  onPress={() => router.push(`/test/attempt/${test.testId}`)}
                   style={styles.startButton}
                   size="sm"
                 >
-                  Start Test
+                  {test.hasAttempted ? 'Retake Test' : 'Start Test'}
                 </Button>
               </CardContent>
             </Card>
@@ -240,5 +341,66 @@ const getStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   startButton: {
     marginTop: Spacing.md,
+  },
+  statusBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: FontSizes.lg,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  categoriesScroll: {
+    marginBottom: Spacing.md,
+  },
+  categoriesContent: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.md,
+  },
+  categoryTab: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryTabActive: {
+    backgroundColor: BrandColors.primary,
+    borderColor: BrandColors.primary,
+  },
+  categoryTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  categoryTabTextActive: {
+    color: '#fff',
   },
 });

@@ -1,51 +1,63 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Card, CardContent } from '../../../src/components/ui';
-import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../../../src/constants/theme';
-import { useTheme } from '../../../src/contexts/ThemeContext';
-import { resultsService } from '../../../src/services/results.service';
-import { TestResult } from '../../../src/types';
-import { formatPercentage, formatRank } from '../../../src/utils/formatters';
+import { Button, Card, CardContent } from '@/src/components/ui';
+import { HtmlText } from '@/src/components/common/HtmlText';
+import { MathRenderer } from '@/src/components/common/MathRenderer';
+import { ImagePreviewModal } from '@/src/components/common/ImagePreviewModal';
+import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '@/src/constants/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { resultsService, AnswerKeyResponse } from '@/src/services/results.service';
+import { TestResult, AnswerKeyQuestion } from '@/src/types';
+import { formatPercentage, formatRank } from '@/src/utils/formatters';
+import { hasLatex } from '@/src/utils/latex.utils';
+import { resolveImageUrl } from '@/src/utils/url.utils';
 
 
 export default function ResultScreen() {
   const { id } = useLocalSearchParams(); // attemptId
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   
   const [result, setResult] = useState<TestResult | null>(null);
+  const [answerKey, setAnswerKey] = useState<AnswerKeyResponse['data'] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const styles = getStyles(colors, isDark);
 
   useEffect(() => {
-    const fetchResult = async () => {
+    const fetchData = async () => {
       try {
-        if (!id) return;
-        setLoading(true);
-        const data = await resultsService.getResult(id as string);
+        if (!id || authLoading) return;
         
-        if (__DEV__) {
-          console.log('🏁 ResultScreen mapped data:', {
-            title: data.testTitle,
-            score: data.score,
-            sections: data.sectionWise?.length
-          });
+        if (!isAuthenticated) {
+          router.replace('/(auth)/login');
+          return;
         }
+
+        setLoading(true);
+        const [resultData, keyData] = await Promise.all([
+          resultsService.getResult(id as string),
+          resultsService.getAnswerKey(id as string)
+        ]);
         
-        setResult(data);
+        setResult(resultData);
+        setAnswerKey(keyData.data);
       } catch (error) {
+        console.error('Error loading results:', error);
         Alert.alert('Error', 'Failed to load results');
         router.replace('/(tabs)');
       } finally {
         setLoading(false);
       }
     };
-    fetchResult();
-  }, [id]);
+    fetchData();
+  }, [id, authLoading, isAuthenticated]);
 
   // Prevent back navigation to test
   useEffect(() => {
@@ -56,7 +68,7 @@ export default function ResultScreen() {
     return () => backHandler.remove();
   }, []);
 
-  if (loading || !result) {
+  if (loading || authLoading || !result) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={BrandColors.primary} />
@@ -65,17 +77,146 @@ export default function ResultScreen() {
     );
   }
 
-  // Helper for badge style
-  const getBadgeStyle = (color: string) => ({
-    backgroundColor: isDark ? `${color}20` : `${color}15`, // Darker semi-transparent bg in dark mode
-    color: color
-  });
+  const renderOption = (question: AnswerKeyQuestion, option: any, index: number) => {
+    const optionLabel = String.fromCharCode(65 + index);
+    const isSelected = question.yourAnswer?.selectedOptions?.includes(optionLabel);
+    const isUnattempted = !question.yourAnswer?.selectedOptions?.length;
+    
+    // 4-state highlighting logic matching web
+    const isCorrectFromApi = option.isCorrect;
+    const isCorrectFromUserRight = !!(isSelected && question.isCorrect);
+    const isCorrectFromCorrectAnswer = question.correctAnswer?.selectedOptions?.includes(optionLabel);
+    const isCorrectOpt = isCorrectFromApi || isCorrectFromUserRight || !!isCorrectFromCorrectAnswer;
+
+    let optionStyle = [styles.optionCard];
+    let markerStyle = [styles.optionMarker];
+    let badge: React.ReactNode = null;
+
+    if (isSelected && question.isCorrect) {
+      // Correct
+      optionStyle.push({ backgroundColor: colors.successLight, borderColor: colors.success } as any);
+      markerStyle.push({ backgroundColor: colors.success, borderColor: colors.success } as any);
+      badge = <Text style={[styles.badgeText, { color: colors.success }]}>✓ Correct</Text>;
+    } else if (isSelected && !question.isCorrect) {
+      // Wrong
+      optionStyle.push({ backgroundColor: colors.errorLight, borderColor: colors.error } as any);
+      markerStyle.push({ backgroundColor: colors.error, borderColor: colors.error } as any);
+      badge = <Text style={[styles.badgeText, { color: colors.error }]}>✗ Your answer</Text>;
+    } else if (isCorrectOpt && !question.isCorrect) {
+      // This is the correct option on a wrong or skipped question
+      if (isUnattempted) {
+        // Skipped -> Yellow
+        optionStyle.push({ backgroundColor: colors.warningLight, borderColor: colors.warning } as any);
+        markerStyle.push({ backgroundColor: colors.warning, borderColor: colors.warning } as any);
+        badge = <Text style={[styles.badgeText, { color: colors.warning }]}>● Correct answer</Text>;
+      } else {
+        // Wrong -> Green (show correct one)
+        optionStyle.push({ backgroundColor: colors.successLight, borderColor: colors.success } as any);
+        markerStyle.push({ backgroundColor: colors.success, borderColor: colors.success } as any);
+        badge = <Text style={[styles.badgeText, { color: colors.success }]}>✓ Correct answer</Text>;
+      }
+    }
+
+    return (
+      <View key={index} style={optionStyle}>
+        <View style={markerStyle}>
+          <Text style={[styles.optionLabel, (isSelected || isCorrectOpt) && { color: '#fff' }]}>{optionLabel}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          {hasLatex(option.text) ? (
+            <MathRenderer 
+              content={option.text} 
+              style={styles.optionText} 
+              baseSize={14} 
+            />
+          ) : (
+            <HtmlText 
+              html={option.text || `Option ${optionLabel}`} 
+              style={styles.optionText} 
+              baseSize={14} 
+            />
+          )}
+        </View>
+        {badge}
+      </View>
+    );
+  };
+
+  const renderQuestionCard = (question: AnswerKeyQuestion) => (
+    <Card key={question.questionId} style={styles.questionCard}>
+      <CardContent>
+        <View style={styles.qHeader}>
+          <Text style={styles.qNumber}>Question {question.questionNumber}</Text>
+          <View style={[styles.statusTag, { backgroundColor: question.isCorrect ? '#ecfdf5' : question.yourAnswer?.selectedOptions?.length ? '#fef2f2' : '#fef3c7' }]}>
+             <Text style={[styles.statusTagText, { color: question.isCorrect ? '#059669' : question.yourAnswer?.selectedOptions?.length ? '#dc2626' : '#d97706' }]}>
+               {question.isCorrect ? 'Correct' : question.yourAnswer?.selectedOptions?.length ? 'Incorrect' : 'Skipped'}
+             </Text>
+          </View>
+        </View>
+
+        <MathRenderer 
+          content={question.questionText} 
+          style={styles.qText} 
+          baseSize={15} 
+        />
+
+        {(() => {
+          const imageUrl = resolveImageUrl((question as any).questionImage || question.questionImageUrl);
+          const images = (question as any).images || [];
+          
+          return (
+            <View style={styles.imageContainer}>
+              {imageUrl && (
+                <TouchableOpacity onPress={() => setPreviewImage(imageUrl)} activeOpacity={0.9}>
+                  <Image source={{ uri: imageUrl }} style={styles.qImage} resizeMode="contain" />
+                </TouchableOpacity>
+              )}
+              {Array.isArray(images) && images.map((img: string, idx: number) => {
+                const resUrl = resolveImageUrl(img);
+                if (!resUrl) return null;
+                return (
+                  <TouchableOpacity key={`rq-img-wrap-${idx}`} onPress={() => setPreviewImage(resUrl)} activeOpacity={0.9}>
+                    <Image key={`rq-img-${idx}`} source={{ uri: resUrl }} style={styles.qImage} resizeMode="contain" />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          );
+        })()}
+
+        <View style={styles.optionsContainer}>
+          {question.options.map((opt, idx) => renderOption(question, opt, idx))}
+        </View>
+
+        {(question.solutionText || question.solutionImageUrl) && (
+          <View style={styles.solutionContainer}>
+            <Text style={styles.solutionTitle}>Solution:</Text>
+            {question.solutionText && (
+              <MathRenderer 
+                content={question.solutionText} 
+                baseSize={14}
+              />
+            )}
+            {question.solutionImageUrl && (
+              <TouchableOpacity onPress={() => setPreviewImage(resolveImageUrl(question.solutionImageUrl))} activeOpacity={0.9}>
+                <Image source={{ uri: resolveImageUrl(question.solutionImageUrl) || '' }} style={styles.solutionImage} resizeMode="contain" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        
-        <View style={styles.header}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ImagePreviewModal 
+        isVisible={!!previewImage} 
+        imageUrl={previewImage} 
+        onClose={() => setPreviewImage(null)} 
+      />
+      <View style={styles.header}>
             <Text style={styles.headerTitle}>Test Result</Text>
             <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
@@ -110,7 +251,7 @@ export default function ResultScreen() {
             <View style={styles.overviewContainer}>
                 <View style={[styles.overviewCard, { backgroundColor: isDark ? `${colors.success}15` : '#DCFCE7' }]}>
                     <Text style={[styles.overviewValue, { color: colors.success }]}>
-                        {formatPercentage(result.speedAccuracy.accuracy)}
+                        {formatPercentage(typeof result.speedAccuracy.accuracy === 'string' ? parseFloat(result.speedAccuracy.accuracy) : result.speedAccuracy.accuracy)}
                     </Text>
                     <Text style={styles.overviewLabel}>Accuracy</Text>
                 </View>
@@ -124,8 +265,8 @@ export default function ResultScreen() {
 
             {/* Section Breakdown */}
             <Text style={styles.sectionHeader}>Section Analysis</Text>
-            {result.sectionWise.map((section) => (
-                <Card key={section.sectionId} style={styles.sectionCard}>
+            {result.sectionWise.map((section, idx) => (
+                <Card key={idx} style={styles.sectionCard}>
                     <CardContent>
                          <View style={styles.sectionTitleRow}>
                              <Text style={styles.sectionName}>{section.sectionName}</Text>
@@ -150,6 +291,21 @@ export default function ResultScreen() {
                 </Card>
             ))}
 
+            {/* Answer Key Section */}
+            {answerKey && (
+              <>
+                <Text style={[styles.sectionHeader, { marginTop: Spacing.xl }]}>Answer Key & Solutions</Text>
+                {answerKey.sections.map(section => (
+                  <View key={section.sectionId}>
+                    {answerKey.sections.length > 1 && (
+                      <Text style={styles.sectionSubHeader}>{section.sectionName}</Text>
+                    )}
+                    {section.questions.map(renderQuestionCard)}
+                  </View>
+                ))}
+              </>
+            )}
+
             <Button 
                 onPress={() => router.replace('/(tabs)')}
                 style={styles.homeButton}
@@ -171,7 +327,7 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background, // Ensure loading background is correct
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: Spacing.md,
@@ -200,8 +356,8 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   },
   summaryCard: {
       marginBottom: Spacing.lg,
-      backgroundColor: BrandColors.primary, // Brand color usually looks fine in dark mode too
-      borderWidth: 0, // No border needed for colored card
+      backgroundColor: BrandColors.primary,
+      borderWidth: 0,
   },
   testTitle: {
       fontSize: FontSizes.lg,
@@ -244,7 +400,6 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
       padding: Spacing.md,
       borderRadius: BorderRadius.md,
       alignItems: 'center',
-      // Background color is handled inline for dynamic opacity
   },
   overviewValue: {
       fontSize: FontSizes.xl,
@@ -260,6 +415,19 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
       fontWeight: 'bold',
       color: colors.textPrimary,
       marginBottom: Spacing.md,
+  },
+  imageContainer: {
+    width: '100%',
+    gap: Spacing.md,
+    marginVertical: Spacing.md,
+  },
+  sectionSubHeader: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingLeft: Spacing.xs,
   },
   sectionCard: {
       marginBottom: Spacing.md,
@@ -300,6 +468,98 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   progressText: {
       fontSize: FontSizes.xs,
       color: colors.textSecondary,
+  },
+  questionCard: {
+    marginBottom: Spacing.lg,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  qHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  qNumber: {
+    fontSize: FontSizes.md,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  statusTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusTagText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  qText: {
+    color: colors.textPrimary,
+    marginBottom: Spacing.lg,
+  },
+  qImage: {
+    width: '100%',
+    height: 200,
+    marginBottom: Spacing.md,
+    borderRadius: 8,
+  },
+  optionsContainer: {
+    gap: Spacing.sm,
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    gap: Spacing.md,
+  },
+  optionMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
+  },
+  optionText: {
+    color: colors.textPrimary,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  solutionContainer: {
+    marginTop: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  solutionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  solutionText: {
+    color: colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+  solutionImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
   },
   homeButton: {
       marginTop: Spacing.lg,

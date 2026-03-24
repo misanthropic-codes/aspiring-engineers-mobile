@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
+import { StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 
 interface HtmlTextProps {
   html: string;
@@ -17,36 +17,56 @@ interface HtmlTextProps {
 export const HtmlText: React.FC<HtmlTextProps> = ({ html, style, baseSize = 15 }) => {
   if (!html) return null;
 
-  // Strip surrounding whitespace
-  const trimmed = html.trim();
+  // Robust string conversion and trimming
+  const trimmed = String(html).trim();
 
   // If no HTML tags at all, render as plain text
   if (!/<[a-z][\s\S]*>/i.test(trimmed)) {
-    return <Text style={style}>{trimmed}</Text>;
+    return <Text style={style} numberOfLines={0}>{trimmed}</Text>;
   }
 
   // Parse HTML into segments
   const segments = parseHtml(trimmed);
 
   if (segments.length === 0) {
-    return <Text style={style}>{stripTags(trimmed)}</Text>;
+    return <Text style={style} numberOfLines={0}>{stripTags(trimmed)}</Text>;
   }
 
+  // Split style into layout and text styles
+  const flattenedStyle = StyleSheet.flatten(style) || {};
+  const containerStyle: ViewStyle = {};
+  const textStyle: TextStyle = {};
+
+  const layoutKeys = [
+    'flex', 'flexGrow', 'flexShrink', 'width', 'height', 'margin', 
+    'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 
+    'marginHorizontal', 'marginVertical', 'alignSelf', 'position',
+    'top', 'bottom', 'left', 'right', 'zIndex'
+  ];
+
+  Object.keys(flattenedStyle).forEach(key => {
+    if (layoutKeys.includes(key)) {
+      (containerStyle as any)[key] = (flattenedStyle as any)[key];
+    } else {
+      (textStyle as any)[key] = (flattenedStyle as any)[key];
+    }
+  });
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {segments.map((segment, index) => (
-        <Text key={index} style={[{ fontSize: baseSize }, style]}>
+        <Text key={index} style={[{ fontSize: baseSize }, textStyle]} numberOfLines={0}>
           {segment.parts.map((part, partIdx) => {
             const partStyle: TextStyle = {};
             if (part.bold) partStyle.fontWeight = 'bold';
             if (part.italic) partStyle.fontStyle = 'italic';
             if (part.superscript) {
-              partStyle.fontSize = baseSize * 0.7;
-              partStyle.lineHeight = baseSize;
+              partStyle.fontSize = (textStyle.fontSize || baseSize) * 0.7;
+              partStyle.lineHeight = (textStyle.fontSize || baseSize);
             }
             if (part.subscript) {
-              partStyle.fontSize = baseSize * 0.7;
-              partStyle.lineHeight = baseSize * 1.8;
+              partStyle.fontSize = (textStyle.fontSize || baseSize) * 0.7;
+              partStyle.lineHeight = (textStyle.fontSize || baseSize) * 1.8;
             }
 
             return (

@@ -104,28 +104,28 @@ export default function AnalyticsScreen() {
                 <View style={[styles.statIconWrap, { backgroundColor: `${BrandColors.primary}20` }]}>
                   <Ionicons name="document-text-outline" size={20} color={BrandColors.primary} />
                 </View>
-                <Text style={styles.statValue}>{analytics.overview.testsAttempted}</Text>
+                <Text style={styles.statValue}>{analytics.overview.testsAttempted ?? 0}</Text>
                 <Text style={styles.statLabel}>Tests Taken</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: `${colors.success}20` }]}>
                   <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
                 </View>
-                <Text style={styles.statValue}>{analytics.overview.overallAccuracy.toFixed(1)}%</Text>
+                <Text style={styles.statValue}>{(analytics.overview.overallAccuracy ?? 0).toFixed(1)}%</Text>
                 <Text style={styles.statLabel}>Accuracy</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: `${BrandColors.primary}20` }]}>
                   <Ionicons name="trophy-outline" size={20} color={BrandColors.primary} />
                 </View>
-                <Text style={styles.statValue}>{analytics.overview.bestScore.toFixed(1)}</Text>
+                <Text style={styles.statValue}>{(analytics.overview.bestScore ?? 0).toFixed(1)}</Text>
                 <Text style={styles.statLabel}>Best Score</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: `${colors.warning}20` }]}>
                   <Ionicons name="time-outline" size={20} color={colors.warning || '#F59E0B'} />
                 </View>
-                <Text style={styles.statValue}>{analytics.overview.totalStudyTime}</Text>
+                <Text style={styles.statValue}>{analytics.overview.totalStudyTime ?? '0m'}</Text>
                 <Text style={styles.statLabel}>Study Time</Text>
               </View>
             </View>
@@ -179,14 +179,14 @@ export default function AnalyticsScreen() {
                             </Text>
                           </View>
                         </View>
-                        <Text style={styles.subjectAccuracy}>{subject.accuracy.toFixed(1)}%</Text>
+                        <Text style={styles.subjectAccuracy}>{(subject.accuracy ?? 0).toFixed(1)}%</Text>
                       </View>
                       <View style={styles.progressBarBg}>
                         <View 
                           style={[
                             styles.progressBarFill, 
                             { 
-                              width: `${Math.max(0, Math.min(subject.accuracy, 100))}%`,
+                              width: `${Math.max(0, Math.min(subject.accuracy ?? 0, 100))}%`,
                               backgroundColor: getStrengthColor(subject.strength)
                             }
                           ]} 
@@ -194,10 +194,10 @@ export default function AnalyticsScreen() {
                       </View>
                       <View style={styles.subjectMeta}>
                         <Text style={styles.metaText}>
-                          {subject.correctAnswers}/{subject.questionsAttempted} correct
+                          {(subject.correctAnswers ?? 0)}/{(subject.questionsAttempted ?? 0)} correct
                         </Text>
                         <Text style={styles.metaText}>
-                          Avg: {subject.avgTimePerQuestion}s/q
+                          Avg: {(subject.avgTimePerQuestion ?? 0)}s/q
                         </Text>
                       </View>
                     </View>
@@ -219,10 +219,10 @@ export default function AnalyticsScreen() {
                       </View>
                       <View style={styles.topicStats}>
                         <Text style={[styles.topicAccuracy, { color: getStrengthColor(topic.strength) }]}>
-                          {topic.accuracy.toFixed(1)}%
+                          {(topic.accuracy ?? 0).toFixed(1)}%
                         </Text>
                         <Text style={styles.topicQuestions}>
-                          {topic.correctAnswers}/{topic.questionsAttempted}
+                          {(topic.correctAnswers ?? 0)}/{(topic.questionsAttempted ?? 0)}
                         </Text>
                       </View>
                     </View>
@@ -248,9 +248,9 @@ export default function AnalyticsScreen() {
                         <Text style={[styles.difficultyLabel, { color: levelColors[level] }]}>
                           {level.charAt(0).toUpperCase() + level.slice(1)}
                         </Text>
-                        <Text style={styles.difficultyAccuracy}>{data.accuracy.toFixed(1)}%</Text>
+                        <Text style={styles.difficultyAccuracy}>{(data?.accuracy ?? 0).toFixed(1)}%</Text>
                         <Text style={styles.difficultyMeta}>
-                          {data.correct}/{data.attempted}
+                          {(data?.correct ?? 0)}/{(data?.attempted ?? 0)}
                         </Text>
                       </View>
                     );
@@ -273,11 +273,11 @@ export default function AnalyticsScreen() {
                     <Text style={styles.timeLabel}>Avg/Test</Text>
                   </View>
                   <View style={styles.timeStat}>
-                    <Text style={styles.timeValue}>{analytics.timeAnalytics.avgTimePerQuestion}s</Text>
+                    <Text style={styles.timeValue}>{(analytics.timeAnalytics.avgTimePerQuestion ?? 0)}s</Text>
                     <Text style={styles.timeLabel}>Avg/Question</Text>
                   </View>
                   <View style={styles.timeStat}>
-                    <Text style={styles.timeValue}>{analytics.timeAnalytics.questionsPerMinute.toFixed(2)}</Text>
+                    <Text style={styles.timeValue}>{(analytics.timeAnalytics.questionsPerMinute ?? 0).toFixed(2)}</Text>
                     <Text style={styles.timeLabel}>Q/min</Text>
                   </View>
                 </View>

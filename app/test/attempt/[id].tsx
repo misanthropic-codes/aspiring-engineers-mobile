@@ -12,6 +12,7 @@ import { useTheme } from '../../../src/contexts/ThemeContext';
 import { useTestEngine } from '../../../src/hooks/useTestEngine';
 import { useTestSecurity } from '../../../src/hooks/useTestSecurity';
 import { QuestionData, StartTestResponse, SubmitAnswerItem, testService } from '../../../src/services/test.service';
+import { useAuth } from '../../../src/contexts/AuthContext';
 import { Answer, Question, QuestionType } from '../../../src/types';
 
 
@@ -28,6 +29,7 @@ export default function TestAttemptScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   
   const [attemptData, setAttemptData] = useState<AttemptData | null>(null);
   const [flatQuestions, setFlatQuestions] = useState<Question[]>([]);
@@ -83,7 +85,13 @@ export default function TestAttemptScreen() {
   useEffect(() => {
     const fetchTest = async () => {
       try {
-        if (!id) return;
+        if (!id || authLoading) return;
+
+        if (!isAuthenticated) {
+          router.replace('/(auth)/login');
+          return;
+        }
+
         setLoading(true);
         const response = await testService.startTest(id as string);
         
@@ -112,7 +120,7 @@ export default function TestAttemptScreen() {
       }
     };
     fetchTest();
-  }, [id]);
+  }, [id, authLoading, isAuthenticated]);
 
   // Build answers payload from current answers
   const buildAnswersPayload = useCallback((answers: Record<string, Answer>): SubmitAnswerItem[] => {
@@ -268,7 +276,7 @@ export default function TestAttemptScreen() {
     setShowPalette(false);
   };
 
-  if (loading || !attemptData) {
+  if (loading || authLoading || !attemptData) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={BrandColors.primary} />

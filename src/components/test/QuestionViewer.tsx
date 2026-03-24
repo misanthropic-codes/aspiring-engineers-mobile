@@ -4,6 +4,10 @@ import { BorderRadius, BrandColors, ColorScheme, FontSizes, Spacing } from '../.
 import { useTheme } from '../../contexts/ThemeContext';
 import { Answer, Question, QuestionType } from '../../types';
 import { HtmlText } from '../common/HtmlText';
+import { MathRenderer } from '../common/MathRenderer';
+import { hasLatex } from '../../utils/latex.utils';
+import { resolveImageUrl } from '../../utils/url.utils';
+import { ImagePreviewModal } from '../common/ImagePreviewModal';
 
 interface QuestionViewerProps {
   question: Question;
@@ -20,6 +24,7 @@ export const QuestionViewer = ({
   
   // Local state for numerical input to handle decimals and negative signs
   const [numericalValue, setNumericalValue] = React.useState('');
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
   const lastQuestionId = React.useRef(question.id);
 
   // Sync local numerical value when question changes or answer updates externally
@@ -80,10 +85,17 @@ export const QuestionViewer = ({
   const renderOptions = () => {
     if (!question.options) return null;
 
-    return question.options.map((optionText, index) => {
+    return question.options.map((optionRaw, index) => {
+      // Ensure optionRaw is treated as a string even if normalization missed it
+      const optionText = typeof optionRaw === 'string' 
+        ? optionRaw 
+        : (optionRaw && typeof optionRaw === 'object' && (optionRaw as any).text) 
+          ? (optionRaw as any).text 
+          : String(optionRaw || '');
+
       const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
       const isSelected = answer?.selectedOptions?.includes(optionLetter);
-      
+
       return (
         <TouchableOpacity
           key={`${question.id}-opt-${index}`}
@@ -105,10 +117,25 @@ export const QuestionViewer = ({
                  <Text style={styles.optionLabel}>{optionLetter}</Text>
              )}
           </View>
-          <HtmlText html={optionText} style={[
-              styles.optionText,
-              isSelected && styles.optionTextSelected
-          ]} baseSize={FontSizes.sm} />
+          {hasLatex(optionText) ? (
+            <MathRenderer 
+              content={optionText} 
+              style={[
+                styles.optionText,
+                isSelected && styles.optionTextSelected
+              ]}
+              baseSize={FontSizes.sm}
+            />
+          ) : (
+            <HtmlText 
+              html={optionText || `Option ${optionLetter}`} 
+              style={[
+                styles.optionText,
+                isSelected && styles.optionTextSelected
+              ]} 
+              baseSize={FontSizes.sm} 
+            />
+          )}
         </TouchableOpacity>
       );
     });
@@ -147,16 +174,51 @@ export const QuestionViewer = ({
         </View>
       </View>
 
-      <HtmlText html={question.questionText} style={styles.questionText} baseSize={FontSizes.base} />
-      
-      {/* Question Image */}
-      {(question as any).questionImage || (question as any).questionImageUrl ? (
-        <Image 
-          source={{ uri: (question as any).questionImage || (question as any).questionImageUrl }} 
-          style={styles.questionImage} 
-          resizeMode="contain"
+        <MathRenderer 
+          content={question.questionText} 
+          style={styles.questionText} 
+          baseSize={FontSizes.base} 
         />
-      ) : null}
+      
+      {/* Question Images */}
+      {(() => {
+        const imageUrl = resolveImageUrl((question as any).questionImage || (question as any).questionImageUrl);
+        const images = (question as any).images || [];
+        
+        return (
+          <View style={styles.imageContainer}>
+            {imageUrl && (
+              <TouchableOpacity onPress={() => setPreviewImage(imageUrl)} activeOpacity={0.9}>
+                <Image 
+                  source={{ uri: imageUrl }} 
+                  style={styles.questionImage} 
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            )}
+            {Array.isArray(images) && images.map((img: string, idx: number) => {
+              const resUrl = resolveImageUrl(img);
+              if (!resUrl) return null;
+              return (
+                <TouchableOpacity key={`q-img-wrap-${idx}`} onPress={() => setPreviewImage(resUrl)} activeOpacity={0.9}>
+                  <Image 
+                    key={`q-img-${idx}`}
+                    source={{ uri: resUrl }} 
+                    style={styles.questionImage} 
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      })()}
+
+      <ImagePreviewModal 
+        isVisible={!!previewImage} 
+        imageUrl={previewImage} 
+        onClose={() => setPreviewImage(null)} 
+      />
 
       <View style={styles.answerArea}>
         {/* Render options if they exist, regardless of type as a fallback, 
@@ -212,7 +274,17 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
     fontSize: FontSizes.base,
     color: colors.textPrimary,
     lineHeight: 24,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  imageContainer: {
+    width: '100%',
+    gap: Spacing.md,
+    marginVertical: Spacing.md,
+  },
+  questionImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: BorderRadius.md,
   },
   answerArea: {
     gap: Spacing.md,
@@ -282,12 +354,6 @@ const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
     fontSize: FontSizes.lg,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    backgroundColor: colors.input,
-  },
-  questionImage: {
-    width: '100%',
-    height: 200,
-    marginBottom: Spacing.md,
-    borderRadius: BorderRadius.md,
+    backgroundColor: colors.background,
   },
 });

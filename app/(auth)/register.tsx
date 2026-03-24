@@ -21,16 +21,18 @@ import { Button, Input } from '../../src/components/ui';
 import {
   BorderRadius,
   BrandColors,
+  ColorScheme,
   FontSizes,
-  LightColors,
   Spacing,
 } from '../../src/constants/theme';
+import { useTheme } from '../../src/contexts/ThemeContext';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { ExamType } from '../../src/types';
 import { isValidEmail, isValidPassword, isValidPhone } from '../../src/utils/validators';
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const { colors, isDark } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -40,6 +42,8 @@ export default function RegisterScreen() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const styles = getStyles(colors, isDark);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -122,7 +126,7 @@ export default function RegisterScreen() {
               <Ionicons
                 name="arrow-back"
                 size={24}
-                color={LightColors.textPrimary}
+                color={colors.textPrimary}
               />
             </TouchableOpacity>
             <Text style={styles.title}>Create Account</Text>
@@ -137,7 +141,7 @@ export default function RegisterScreen() {
               <Ionicons
                 name="alert-circle"
                 size={20}
-                color={LightColors.error}
+                color={colors.error}
               />
               <Text style={styles.errorText}>{error}</Text>
             </View>
@@ -156,7 +160,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="person-outline"
                   size={20}
-                  color={LightColors.textMuted}
+                  color={colors.textMuted}
                 />
               }
             />
@@ -173,7 +177,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={LightColors.textMuted}
+                  color={colors.textMuted}
                 />
               }
             />
@@ -189,7 +193,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="call-outline"
                   size={20}
-                  color={LightColors.textMuted}
+                  color={colors.textMuted}
                 />
               }
             />
@@ -205,7 +209,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={LightColors.textMuted}
+                  color={colors.textMuted}
                 />
               }
             />
@@ -221,7 +225,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={LightColors.textMuted}
+                  color={colors.textMuted}
                 />
               }
             />
@@ -251,10 +255,10 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ColorScheme, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LightColors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -272,23 +276,23 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSizes['3xl'],
     fontWeight: 'bold',
-    color: LightColors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: Spacing.xs,
   },
   subtitle: {
     fontSize: FontSizes.base,
-    color: LightColors.textMuted,
+    color: colors.textMuted,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LightColors.errorLight,
+    backgroundColor: colors.errorLight,
     borderRadius: BorderRadius.md,
     padding: Spacing.sm,
     marginBottom: Spacing.md,
   },
   errorText: {
-    color: LightColors.error,
+    color: colors.error,
     fontSize: FontSizes.sm,
     marginLeft: Spacing.xs,
     flex: 1,
@@ -304,7 +308,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: FontSizes.sm,
-    color: LightColors.textMuted,
+    color: colors.textMuted,
   },
   linkText: {
     fontSize: FontSizes.sm,
